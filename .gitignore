@@ -1,0 +1,6 @@
+node_modules/
+dist/
+vite.err
+vite.log
+_reference_api/
+report_extracted.txt
