@@ -90,47 +90,6 @@ function UserIcon() {
   );
 }
 
-function TikTokIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M14 3c.2 1.7 1 3 2.4 4 1 .7 2.1 1.1 3.6 1.1v2.9a9 9 0 0 1-3.9-.9v5.3a6.1 6.1 0 1 1-6.1-6.1c.4 0 .8 0 1.2.1v3a3.4 3.4 0 1 0 2.8 3.3V3h3Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function FacebookIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M13.5 21v-7.3H16l.4-3h-2.9V8.8c0-.9.2-1.6 1.5-1.6h1.6V4.5c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 4v2.3H8v3h2.5V21h3Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function InstagramIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect
-        x="4"
-        y="4"
-        width="16"
-        height="16"
-        rx="4.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" strokeWidth="2" />
-      <circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" />
-    </svg>
-  );
-}
-
 function StoreBrand({ store }) {
   if (store.logo) {
     return <img src={store.logo} alt={store.name} className="storefront-brand-logo" />;
@@ -177,9 +136,9 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
         </button>
 
         <div className="storefront-socials">
-          <span className="storefront-social-icon"><TikTokIcon /></span>
-          <span className="storefront-social-icon"><FacebookIcon /></span>
-          <span className="storefront-social-icon"><InstagramIcon /></span>
+          <span>t</span>
+          <span>f</span>
+          <span>ig</span>
         </div>
       </div>
 

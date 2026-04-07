@@ -22,66 +22,6 @@ export default function HomePage() {
       : currentUser?.role === "seller"
         ? { to: "/seller", label: t.openSellerPanel }
         : { to: "/seller-request", label: t.createSellerRequest };
-  const pricingPlans = language === "ar"
-    ? [
-        {
-          name: "البداية",
-          price: "$100",
-          period: "سنويًا",
-          description: "للتاجر الذي يريد الانطلاق بسرعة بواجهة متجر مرتبة.",
-          features: ["متجر واحد", "حتى 50 منتج", "إدارة طلبات أساسية"],
-        },
-        {
-          name: "النمو",
-          price: "$180",
-          period: "سنويًا",
-          description: "الخيار الأنسب للمتاجر التي بدأت تستقبل طلبات بشكل مستمر.",
-          features: ["حتى 3 متاجر", "حتى 300 منتج", "تقارير ومخزون أفضل"],
-          featured: true,
-        },
-        {
-          name: "التوسع",
-          price: "$300",
-          period: "سنويًا",
-          description: "للتاجر الذي يريد تشغيل أكبر مع مرونة أعلى في الإدارة.",
-          features: ["متاجر ومنتجات أكثر", "تحليلات أوسع", "أولوية في التوسع"],
-        },
-      ]
-    : [
-        {
-          name: "Starter",
-          price: "$100",
-          period: "per year",
-          description: "For sellers who want a clean first storefront and simple operations.",
-          features: ["1 store", "Up to 50 products", "Basic order handling"],
-        },
-        {
-          name: "Growth",
-          price: "$180",
-          period: "per year",
-          description: "Best for stores receiving steady orders and expanding their catalog.",
-          features: ["Up to 3 stores", "Up to 300 products", "Better inventory and reports"],
-          featured: true,
-        },
-        {
-          name: "Scale",
-          price: "$300",
-          period: "per year",
-          description: "For merchants running larger operations with more flexibility.",
-          features: ["More stores and products", "Expanded analytics", "Growth-ready controls"],
-        },
-      ];
-  const launchSteps = language === "ar"
-    ? [
-        { step: "الخطوة الأولى", title: "أضف المنتجات", text: "ابدأ بإدخال منتجاتك وصورها وأسعارها بشكل مرتب." },
-        { step: "الخطوة الثانية", title: "خصص التصميم", text: "اختر ألوان متجرك وصور العرض وهوية المتجر." },
-        { step: "الخطوة الثالثة", title: "استقبل الطلبات", text: "بعد الموافقة، ابدأ البيع وتابع الطلبات من لوحة التاجر." },
-      ]
-    : [
-        { step: "Step one", title: "Add products", text: "Upload your catalog with clear images, prices, and descriptions." },
-        { step: "Step two", title: "Customize design", text: "Adjust colors, showcase images, and the store identity." },
-        { step: "Step three", title: "Receive orders", text: "Once approved, start selling and manage orders from one dashboard." },
-      ];
 
   return (
     <section className="guest-landing">
@@ -129,53 +69,6 @@ export default function HomePage() {
               {language === "ar" ? "دخول الأدمن والتاجر" : "Admin & seller access"}
             </Link>
           ) : null}
-        </div>
-      </section>
-
-      <section className="guest-pricing">
-        <div className="guest-section-intro compact">
-          <span className="eyebrow">{language === "ar" ? "خطط واضحة" : "Clear pricing"}</span>
-          <h2>
-            {language === "ar"
-              ? "ابدأ بالخطة المناسبة لحجم متجرك"
-              : "Choose a plan that fits your store size"}
-          </h2>
-          <p>
-            {language === "ar"
-              ? "أسعار بسيطة ومنطقية للتاجر الصغير والمتوسط، مع مجال واضح للنمو."
-              : "Simple pricing for small and growing merchants with a clear path to scale."}
-          </p>
-        </div>
-
-        <div className="guest-pricing-grid">
-          {pricingPlans.map((plan) => (
-            <article
-              key={plan.name}
-              className={plan.featured ? "guest-pricing-card featured" : "guest-pricing-card"}
-            >
-              <div className="guest-pricing-head">
-                <span className="guest-pricing-tier">{plan.name}</span>
-                {plan.featured ? (
-                  <span className="guest-pricing-badge">
-                    {language === "ar" ? "الأكثر طلبًا" : "Most popular"}
-                  </span>
-                ) : null}
-              </div>
-              <div className="guest-pricing-price">
-                <strong>{plan.price}</strong>
-                <span>{plan.period}</span>
-              </div>
-              <p>{plan.description}</p>
-              <div className="guest-pricing-list">
-                {plan.features.map((feature) => (
-                  <span key={feature}>{feature}</span>
-                ))}
-              </div>
-              <Link className="primary-button" to={primaryLink.to}>
-                {language === "ar" ? "ابدأ الآن" : "Get started"}
-              </Link>
-            </article>
-          ))}
         </div>
       </section>
 
@@ -231,52 +124,6 @@ export default function HomePage() {
                 : "A polished experience for both guests and sellers across mobile and web."}
             </p>
           </article>
-        </div>
-      </section>
-
-      <section className="guest-steps">
-        <div className="guest-section-intro compact">
-          <span className="eyebrow">{language === "ar" ? "ابدأ أسرع" : "Launch faster"}</span>
-          <h2>
-            {language === "ar"
-              ? "خطوات بسيطة تصنع فرقًا"
-              : "Simple steps that make a difference"}
-          </h2>
-          <p>
-            {language === "ar"
-              ? "ثلاث خطوات واضحة لتبدأ البيع بشكل مرتب وعملي."
-              : "Three clear steps to start selling in a clean and practical way."}
-          </p>
-        </div>
-
-        <div className="guest-steps-panel">
-          {launchSteps.map((item, index) => (
-            <article key={item.title} className="guest-step-card">
-              <span className="guest-step-label">{item.step}</span>
-              <div className="guest-step-icon">{index + 1}</div>
-              <h3>{item.title}</h3>
-              <p>{item.text}</p>
-            </article>
-          ))}
-        </div>
-
-        <div className="guest-guarantee-panel">
-          <div className="guest-guarantee-copy">
-            <span className="eyebrow">{language === "ar" ? "دعم واضح" : "Clear support"}</span>
-            <h2>{language === "ar" ? "انطلاقة مضمونة وواضحة" : "A clear and confident start"}</h2>
-            <p>
-              {language === "ar"
-                ? "لو احتجت مساعدة في البداية، تواصل معنا وسنساعدك على تجهيز متجرك خطوة بخطوة."
-                : "If you need help getting started, we can guide you through setup step by step."}
-            </p>
-            <Link className="primary-button" to={primaryLink.to}>
-              {language === "ar" ? "ابدأ الآن" : "Start now"}
-            </Link>
-          </div>
-          <div className="guest-guarantee-badge">
-            <strong>100%</strong>
-            <span>{language === "ar" ? "جاهزية للانطلاق" : "Launch ready"}</span>
-          </div>
         </div>
       </section>
 

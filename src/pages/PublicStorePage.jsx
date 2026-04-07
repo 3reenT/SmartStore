@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { useApp } from "../state/AppContext";
 import StorefrontTopBar from "../components/StorefrontTopBar";
@@ -20,40 +19,14 @@ function getStoreInitials(name) {
     .join("");
 }
 
-function getCategorySymbol(category) {
+function getCategorySymbol(category, language) {
   const normalized = String(category || "").toLowerCase();
 
-  if (normalized.includes("ipad") || normalized.includes("tablet") || normalized.includes("تابلت")) {
-    return "[TB]";
-  }
-
-  if (normalized.includes("phone") || normalized.includes("iphone") || normalized.includes("جوال")) {
-    return "[PH]";
-  }
-
-  if (normalized.includes("watch") || normalized.includes("ساع")) {
-    return "[WT]";
-  }
-
   if (
-    normalized.includes("accessor") ||
-    normalized.includes("cable") ||
-    normalized.includes("charger") ||
-    normalized.includes("case") ||
-    normalized.includes("cover") ||
-    normalized.includes("اكسسوار")
+    normalized.includes("watch") ||
+    normalized.includes("ساع")
   ) {
-    return "[AC]";
-  }
-
-  if (
-    normalized.includes("laptop") ||
-    normalized.includes("electronics") ||
-    normalized.includes("tech") ||
-    normalized.includes("الكترون") ||
-    normalized.includes("إلكترون")
-  ) {
-    return "[LP]";
+    return "⌚";
   }
 
   if (
@@ -62,23 +35,53 @@ function getCategorySymbol(category) {
     normalized.includes("قميص") ||
     normalized.includes("بليزر")
   ) {
-    return "[TS]";
+    return "👔";
   }
 
-  if (normalized.includes("jacket") || normalized.includes("جاكيت")) {
-    return "[JK]";
+  if (
+    normalized.includes("jacket") ||
+    normalized.includes("جاكيت")
+  ) {
+    return "🧥";
   }
 
-  if (normalized.includes("pants") || normalized.includes("trouser") || normalized.includes("بنطال")) {
-    return "[PT]";
+  if (
+    normalized.includes("pants") ||
+    normalized.includes("trouser") ||
+    normalized.includes("بنطال")
+  ) {
+    return "👖";
   }
 
-  if (normalized.includes("shoe") || normalized.includes("sneaker") || normalized.includes("أحذية")) {
-    return "[SH]";
+  if (
+    normalized.includes("shoe") ||
+    normalized.includes("sneaker") ||
+    normalized.includes("أحذية")
+  ) {
+    return "👟";
   }
 
-  if (normalized.includes("perfume") || normalized.includes("عطر")) {
-    return "[PF]";
+  if (
+    normalized.includes("perfume") ||
+    normalized.includes("عطر")
+  ) {
+    return "🧴";
+  }
+
+  if (
+    normalized.includes("accessor") ||
+    normalized.includes("اكسسوار")
+  ) {
+    return "✦";
+  }
+
+  if (
+    normalized.includes("laptop") ||
+    normalized.includes("electronics") ||
+    normalized.includes("tech") ||
+    normalized.includes("إلكترون")
+  ) {
+    return "💻";
   }
 
   if (
@@ -88,10 +91,10 @@ function getCategorySymbol(category) {
     normalized.includes("منزل") ||
     normalized.includes("أثاث")
   ) {
-    return "[HM]";
+    return "⌂";
   }
 
-  return "[--]";
+  return language === "ar" ? "◂" : "▸";
 }
 
 function getCategoryBarStyle(color) {
@@ -135,13 +138,6 @@ export default function PublicStorePage() {
     return matchesSearch && matchesCategory;
   });
   const categories = [...new Set(storeProducts.map((product) => product.category).filter(Boolean))];
-  const categoryImages = Object.fromEntries(
-    categories.map((category) => [
-      category,
-      store.categoryLogos?.[category] || "",
-    ]),
-  );
-  const allProductsImage = store.categoryLogos?.__all__ || "";
   const visibleCategories = categoryFilter
     ? categories.filter((category) => category === categoryFilter)
     : categories;
@@ -154,26 +150,6 @@ export default function PublicStorePage() {
     }))
     .filter((group) => group.products.length);
   const showcaseImages = Array.isArray(store.galleryImages) ? store.galleryImages.filter(Boolean) : [];
-  const [activeShowcaseIndex, setActiveShowcaseIndex] = useState(0);
-  const rotatedShowcaseImages = showcaseImages.length
-    ? showcaseImages.map((_, index) => showcaseImages[(activeShowcaseIndex + index) % showcaseImages.length])
-    : [];
-
-  useEffect(() => {
-    setActiveShowcaseIndex(0);
-  }, [store.id]);
-
-  useEffect(() => {
-    if (showcaseImages.length <= 1) {
-      return undefined;
-    }
-
-    const interval = window.setInterval(() => {
-      setActiveShowcaseIndex((current) => (current + 1) % showcaseImages.length);
-    }, 3200);
-
-    return () => window.clearInterval(interval);
-  }, [showcaseImages]);
 
   return (
     <section className="public-store-page">
@@ -189,7 +165,7 @@ export default function PublicStorePage() {
       >
         <div className="public-store-hero-inner">
           <div className="public-store-brand">
-            {store.logo ? (
+            {store.logo && store.logo !== "/logo.png" ? (
               <img src={store.logo} alt={store.name} className="public-store-logo" />
             ) : (
               <div className="public-store-logo public-store-logo-fallback">
@@ -247,15 +223,7 @@ export default function PublicStorePage() {
             >
               <span className="store-category-arrow">{language === "ar" ? "‹" : "›"}</span>
               <strong>{language === "ar" ? "الرئيسية" : "All products"}</strong>
-              <span className="store-category-icon">
-                {allProductsImage ? (
-                  <img
-                    src={allProductsImage}
-                    alt={language === "ar" ? "جميع المنتجات" : "All products"}
-                    className="store-category-icon-image"
-                  />
-                ) : null}
-              </span>
+              <span className="store-category-icon">⌂</span>
             </Link>
 
             {categories.length ? (
@@ -275,13 +243,7 @@ export default function PublicStorePage() {
                   <span className="store-category-arrow">{language === "ar" ? "‹" : "›"}</span>
                   <strong>{category}</strong>
                   <span className="store-category-icon">
-                    {categoryImages[category] ? (
-                      <img
-                        src={categoryImages[category]}
-                        alt={category}
-                        className="store-category-icon-image"
-                      />
-                    ) : null}
+                    {getCategorySymbol(category, language)}
                   </span>
                 </Link>
               ))
@@ -300,22 +262,22 @@ export default function PublicStorePage() {
             <section className="storefront-showcase-strip" id="store-products">
               <div
                 className={
-                  rotatedShowcaseImages.length > 1
+                  showcaseImages.length > 1
                     ? "storefront-showcase-layout"
                     : "storefront-showcase-layout single-image"
                 }
               >
                 <div className="storefront-showcase-feature">
                   <img
-                    src={rotatedShowcaseImages[0]}
+                    src={showcaseImages[0]}
                     alt={`${store.name} showcase`}
                     className="storefront-showcase-feature-image"
                   />
                 </div>
 
-                {rotatedShowcaseImages.length > 1 ? (
+                {showcaseImages.length > 1 ? (
                   <div className="storefront-showcase-grid">
-                    {rotatedShowcaseImages.slice(1, 5).map((image, index) => (
+                    {showcaseImages.slice(1, 5).map((image, index) => (
                       <div key={`${index}-${image.slice(0, 24)}`} className="storefront-showcase-tile">
                         <img
                           src={image}
@@ -327,27 +289,6 @@ export default function PublicStorePage() {
                   </div>
                 ) : null}
               </div>
-              {rotatedShowcaseImages.length > 1 ? (
-                <div className="storefront-showcase-dots" aria-label={language === "ar" ? "صور العرض" : "Showcase images"}>
-                  {showcaseImages.map((image, index) => (
-                    <button
-                      key={`${index}-${image.slice(0, 24)}`}
-                      type="button"
-                      className={
-                        index === activeShowcaseIndex
-                          ? "storefront-showcase-dot active"
-                          : "storefront-showcase-dot"
-                      }
-                      aria-label={
-                        language === "ar"
-                          ? `الانتقال إلى الصورة ${index + 1}`
-                          : `Go to image ${index + 1}`
-                      }
-                      onClick={() => setActiveShowcaseIndex(index)}
-                    />
-                  ))}
-                </div>
-              ) : null}
             </section>
           ) : null}
 

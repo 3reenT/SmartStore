@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { useApp } from "../../state/AppContext";
 import { translations } from "../../i18n";
 
@@ -29,8 +29,7 @@ function createDraft(store) {
     storeUrl: store.storeUrl || "",
     theme: store.theme || "Modern",
     primaryColor: store.primaryColor || "#18c79c",
-    logo: store.logo || "",
-    categoryLogos: store.categoryLogos || {},
+    logo: store.logo || "/logo.png",
     banner: store.banner || "",
     galleryImages: Array.isArray(store.galleryImages) ? store.galleryImages : [],
     notifications: { ...store.notifications },
@@ -42,13 +41,10 @@ function createDraft(store) {
 
 export default function SellerStoreSettingsPage() {
   const { storeId } = useParams();
-  const navigate = useNavigate();
-  const { currentUser, stores, products, updateStore, setActiveSellerStore, language } = useApp();
+  const { currentUser, stores, updateStore, setActiveSellerStore, language } = useApp();
   const t = translations[language];
   const sellerStores = stores.filter((store) => store.sellerId === currentUser?.id);
   const store = sellerStores.find((item) => item.id === storeId) || null;
-  const storeProducts = products.filter((product) => product.storeId === storeId);
-  const storeCategories = [...new Set(storeProducts.map((product) => product.category).filter(Boolean))];
   const [savedMessage, setSavedMessage] = useState("");
   const [activeTab, setActiveTab] = useState("general");
   const [draft, setDraft] = useState(() => (store ? createDraft(store) : null));
@@ -105,30 +101,6 @@ export default function SellerStoreSettingsPage() {
     setDraft((current) => ({ ...current, [field]: value }));
   };
 
-  const handleCategoryLogoChange = async (categoryKey, file) => {
-    if (!file) {
-      return;
-    }
-
-    const value = await readFileAsDataUrl(file);
-    setDraft((current) => ({
-      ...current,
-      categoryLogos: {
-        ...(current.categoryLogos || {}),
-        [categoryKey]: value,
-      },
-    }));
-  };
-
-  const removeCategoryLogo = (categoryKey) => {
-    setDraft((current) => ({
-      ...current,
-      categoryLogos: Object.fromEntries(
-        Object.entries(current.categoryLogos || {}).filter(([key]) => key !== categoryKey),
-      ),
-    }));
-  };
-
   const handleGalleryUpload = async (files) => {
     const selectedFiles = Array.from(files || []).slice(0, 6);
 
@@ -158,7 +130,6 @@ export default function SellerStoreSettingsPage() {
       ownerName: currentUser.name,
     });
     setSavedMessage(t.savedToStore);
-    navigate("/seller/store");
   };
 
   return (
@@ -334,13 +305,7 @@ export default function SellerStoreSettingsPage() {
               <div>
                 <label>{t.storeLogo}</label>
                 <div className="asset-upload-box">
-                  {draft.logo ? (
-                    <img src={draft.logo} alt={t.storeLogo} className="store-logo-preview" />
-                  ) : (
-                    <div className="store-logo-preview public-store-logo-fallback">
-                      {language === "ar" ? "بدون شعار" : "No logo"}
-                    </div>
-                  )}
+                  <img src={draft.logo || "/logo.png"} alt={t.storeLogo} className="store-logo-preview" />
                   <label className="secondary-button upload-trigger">
                     {t.uploadLogo}
                     <input
@@ -350,15 +315,6 @@ export default function SellerStoreSettingsPage() {
                       onChange={(event) => handleAssetChange("logo", event.target.files?.[0])}
                     />
                   </label>
-                  {draft.logo ? (
-                    <button
-                      className="secondary-button danger-button"
-                      type="button"
-                      onClick={() => setDraft((current) => ({ ...current, logo: "" }))}
-                    >
-                      {language === "ar" ? "حذف الشعار" : "Remove logo"}
-                    </button>
-                  ) : null}
                 </div>
               </div>
               <div className="seller-form-span">
@@ -419,47 +375,6 @@ export default function SellerStoreSettingsPage() {
                     ))}
                   </div>
                 ) : null}
-              </div>
-
-              <div className="seller-form-span">
-                <label>{language === "ar" ? "شعارات أقسام المتجر" : "Store section logos"}</label>
-                <p className="helper-text">
-                  {language === "ar"
-                    ? "هذه الصور تظهر بجانب أقسام المتجر. إذا لم ترفع صورة لقسم ما، سيظهر بدون لوجو."
-                    : "These images appear beside store sections. If you do not upload one, that section shows without a logo."}
-                </p>
-                <div className="store-gallery-editor">
-                  {[{ key: "__all__", label: language === "ar" ? "الرئيسية" : "All products" }, ...storeCategories.map((category) => ({ key: category, label: category }))].map((item) => (
-                    <div key={item.key} className="store-gallery-editor-card">
-                      {draft.categoryLogos?.[item.key] ? (
-                        <img src={draft.categoryLogos[item.key]} alt={item.label} />
-                      ) : (
-                        <div className="store-logo-preview public-store-logo-fallback">
-                          {language === "ar" ? "بدون لوجو" : "No logo"}
-                        </div>
-                      )}
-                      <strong>{item.label}</strong>
-                      <label className="secondary-button upload-trigger">
-                        {language === "ar" ? "رفع صورة القسم" : "Upload section image"}
-                        <input
-                          type="file"
-                          className="hidden-file-input"
-                          accept="image/*"
-                          onChange={(event) => handleCategoryLogoChange(item.key, event.target.files?.[0])}
-                        />
-                      </label>
-                      {draft.categoryLogos?.[item.key] ? (
-                        <button
-                          type="button"
-                          className="secondary-button danger-button"
-                          onClick={() => removeCategoryLogo(item.key)}
-                        >
-                          {language === "ar" ? "حذف الصورة" : "Remove image"}
-                        </button>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           </section>

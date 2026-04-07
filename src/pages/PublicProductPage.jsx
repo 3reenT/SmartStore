@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useMemo } from "react";
 import { useApp } from "../state/AppContext";
 import StorefrontTopBar from "../components/StorefrontTopBar";
 
@@ -50,77 +50,11 @@ export default function PublicProductPage() {
     [products, store.id, product.id],
   );
 
-  const productImages =
-    Array.isArray(product.images) && product.images.length
-      ? product.images
-      : product.image
-        ? [product.image]
-        : [];
-  const sizeOptions = Array.isArray(product.sizeOptions) ? product.sizeOptions.filter(Boolean) : [];
-  const colorOptions = Array.isArray(product.colorOptions)
-    ? product.colorOptions.filter(Boolean)
-    : [];
-  const colorImageMap = product.colorImageMap || {};
-  const variantInventory = Array.isArray(product.variantInventory) ? product.variantInventory : [];
-
-  const [activeImage, setActiveImage] = useState(productImages[0] || "");
-  const [selectedSize, setSelectedSize] = useState(sizeOptions[0] || "");
-  const [selectedColor, setSelectedColor] = useState(colorOptions[0] || "");
-  const [selectionError, setSelectionError] = useState("");
-
-  useEffect(() => {
-    setActiveImage(productImages[0] || "");
-    setSelectedSize(sizeOptions[0] || "");
-    setSelectedColor(colorOptions[0] || "");
-    setSelectionError("");
-  }, [product.id]);
-
-  useEffect(() => {
-    if (!selectedColor) {
-      return;
-    }
-
-    const mappedImage = colorImageMap[selectedColor];
-    if (mappedImage) {
-      setActiveImage(mappedImage);
-    }
-  }, [colorImageMap, selectedColor]);
-
   const originalPrice = Number(product.originalPrice || 0);
   const discount =
     originalPrice > product.price
       ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
       : 0;
-
-  const availableStock = useMemo(() => {
-    if (variantInventory.length && selectedSize && selectedColor) {
-      return (
-        variantInventory.find(
-          (entry) => entry.size === selectedSize && entry.color === selectedColor,
-        )?.stock ?? 0
-      );
-    }
-
-    if (sizeOptions.length && selectedSize && !colorOptions.length) {
-      return product.sizeInventory?.find((entry) => entry.size === selectedSize)?.stock ?? 0;
-    }
-
-    if (colorOptions.length && selectedColor && !sizeOptions.length) {
-      return product.colorInventory?.find((entry) => entry.color === selectedColor)?.stock ?? 0;
-    }
-
-    return product.stock;
-  }, [
-    colorOptions.length,
-    product.colorInventory,
-    product.sizeInventory,
-    product.stock,
-    selectedColor,
-    selectedSize,
-    sizeOptions.length,
-    variantInventory,
-  ]);
-
   const storeCustomer = getStoreCustomer(store.id);
   const isCustomer = Boolean(storeCustomer);
   const storeWorkspace = getStoreCustomerWorkspace(store.id);
@@ -139,33 +73,12 @@ export default function PublicProductPage() {
     navigate("/login", { state: loginRedirectState });
   };
 
-  const requireSelection = (callback) => {
-    if (sizeOptions.length && !selectedSize) {
-      setSelectionError(language === "ar" ? "اختر المقاس أولاً." : "Select a size first.");
-      return;
-    }
-
-    if (colorOptions.length && !selectedColor) {
-      setSelectionError(language === "ar" ? "اختر اللون أولاً." : "Select a color first.");
-      return;
-    }
-
-    if ((sizeOptions.length || colorOptions.length) && availableStock <= 0) {
-      setSelectionError(
-        language === "ar"
-          ? "الخيار المحدد غير متوفر حالياً."
-          : "The selected option is out of stock.",
-      );
-      return;
-    }
-
-    setSelectionError("");
-    callback();
-  };
-
   return (
     <section className="public-product-page">
-      <StorefrontTopBar store={store} searchTo={`/store/${store.slug || store.id}#store-products`} />
+      <StorefrontTopBar
+        store={store}
+        searchTo={`/store/${store.slug || store.id}#store-products`}
+      />
 
       <nav className="product-breadcrumb">
         <Link to="/">{language === "ar" ? "الرئيسية" : "Home"}</Link>
@@ -180,19 +93,10 @@ export default function PublicProductPage() {
       <section className="public-product-hero">
         <div className="public-product-gallery">
           <div className="public-product-thumbs">
-            {(productImages.length ? productImages : [null]).map((image, index) => (
-              <button
-                key={`${index}-${image || "placeholder"}`}
-                type="button"
-                className={
-                  activeImage === image
-                    ? "public-product-thumb-button active"
-                    : "public-product-thumb-button"
-                }
-                onClick={() => setActiveImage(image || "")}
-              >
-                {image ? (
-                  <img src={image} alt={product.name} className="public-product-thumb-image" />
+            {Array.from({ length: 4 }).map((_, index) => (
+              <button key={index} type="button" className="public-product-thumb-button">
+                {product.image ? (
+                  <img src={product.image} alt={product.name} className="public-product-thumb-image" />
                 ) : (
                   <span>{product.category}</span>
                 )}
@@ -203,8 +107,8 @@ export default function PublicProductPage() {
           <div className="public-product-main-image-card">
             {discount > 0 ? <span className="product-sale-badge">-{discount}%</span> : null}
             {product.isNew ? <span className="product-new-badge">NEW</span> : null}
-            {activeImage ? (
-              <img src={activeImage} alt={product.name} className="public-product-main-image" />
+            {product.image ? (
+              <img src={product.image} alt={product.name} className="public-product-main-image" />
             ) : (
               <div className="public-product-main-image placeholder">{product.category}</div>
             )}
@@ -238,68 +142,10 @@ export default function PublicProductPage() {
           <div className="public-product-meta-list">
             <span>{store.name}</span>
             <span>{product.category}</span>
-            <span>{language === "ar" ? "المخزون" : "Stock"}: {availableStock}</span>
+            <span>
+              {language === "ar" ? "المخزون" : "Stock"}: {product.stock}
+            </span>
           </div>
-
-          {sizeOptions.length ? (
-            <div className="public-product-size-block">
-              <strong>
-                {language === "ar"
-                  ? product.sizeMode === "numeric"
-                    ? "اختر النمرة"
-                    : "اختر المقاس"
-                  : product.sizeMode === "numeric"
-                    ? "Choose size number"
-                    : "Choose size"}
-              </strong>
-              <div className="public-product-size-list">
-                {sizeOptions.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    className={
-                      selectedSize === size
-                        ? "public-product-size-button active"
-                        : "public-product-size-button"
-                    }
-                    onClick={() => {
-                      setSelectedSize(size);
-                      setSelectionError("");
-                    }}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {colorOptions.length ? (
-            <div className="public-product-size-block">
-              <strong>{language === "ar" ? "اختر اللون" : "Choose color"}</strong>
-              <div className="public-product-size-list">
-                {colorOptions.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={
-                      selectedColor === color
-                        ? "public-product-size-button active"
-                        : "public-product-size-button"
-                    }
-                    onClick={() => {
-                      setSelectedColor(color);
-                      setSelectionError("");
-                    }}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {selectionError ? <p className="form-error">{selectionError}</p> : null}
 
           <p className="public-product-description">{product.description}</p>
 
@@ -307,32 +153,14 @@ export default function PublicProductPage() {
             <button
               className="primary-button public-product-action secondary-dark"
               type="button"
-              onClick={() =>
-                requireSelection(() =>
-                  requireCustomer(() =>
-                    addToCart(store.id, product.id, 1, {
-                      size: selectedSize,
-                      color: selectedColor,
-                    }),
-                  ),
-                )
-              }
+              onClick={() => requireCustomer(() => addToCart(store.id, product.id, 1))}
             >
               {language === "ar" ? "إضافة إلى السلة" : "Add to cart"}
             </button>
             <button
               className="primary-button public-product-action secondary-dark"
               type="button"
-              onClick={() =>
-                requireSelection(() =>
-                  requireCustomer(() =>
-                    buyNow(store.id, product.id, 1, {
-                      size: selectedSize,
-                      color: selectedColor,
-                    }),
-                  ),
-                )
-              }
+              onClick={() => requireCustomer(() => buyNow(store.id, product.id, 1))}
             >
               {language === "ar" ? "شراء الآن" : "Buy now"}
             </button>

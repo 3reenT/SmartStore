@@ -47,11 +47,7 @@ function createStoreDefaults(store = {}) {
     slug,
     storeUrl:
       store.storeUrl || `https://smartstore.ps/${slug || `store-${Date.now()}`}`,
-    logo: store.logo === "/logo.png" ? "" : store.logo || "",
-    categoryLogos:
-      store.categoryLogos && typeof store.categoryLogos === "object"
-        ? store.categoryLogos
-        : {},
+    logo: store.logo || "/logo.png",
     banner: store.banner || "",
     galleryImages: Array.isArray(store.galleryImages) ? store.galleryImages.filter(Boolean) : [],
     theme: store.theme || "Modern",
@@ -78,100 +74,7 @@ function createStoreDefaults(store = {}) {
   };
 }
 
-function normalizeSizeInventoryEntries(entries) {
-  return Array.isArray(entries)
-    ? entries
-        .map((entry) => ({
-          size: String(entry?.size || "").trim(),
-          stock: Math.max(0, Number(entry?.stock || 0)),
-        }))
-        .filter((entry) => entry.size)
-    : [];
-}
-
-function normalizeColorInventoryEntries(entries) {
-  return Array.isArray(entries)
-    ? entries
-        .map((entry) => ({
-          color: String(entry?.color || "").trim(),
-          stock: Math.max(0, Number(entry?.stock || 0)),
-        }))
-        .filter((entry) => entry.color)
-    : [];
-}
-
-function normalizeVariantInventoryEntries(entries) {
-  return Array.isArray(entries)
-    ? entries
-        .map((entry) => ({
-          size: String(entry?.size || "").trim(),
-          color: String(entry?.color || "").trim(),
-          stock: Math.max(0, Number(entry?.stock || 0)),
-        }))
-        .filter((entry) => entry.size || entry.color)
-    : [];
-}
-
-function summarizeVariantInventory(variantInventory) {
-  const sizeTotals = new Map();
-  const colorTotals = new Map();
-
-  variantInventory.forEach((entry) => {
-    if (entry.size) {
-      sizeTotals.set(entry.size, (sizeTotals.get(entry.size) || 0) + entry.stock);
-    }
-
-    if (entry.color) {
-      colorTotals.set(entry.color, (colorTotals.get(entry.color) || 0) + entry.stock);
-    }
-  });
-
-  return {
-    sizeOptions: [...sizeTotals.keys()],
-    colorOptions: [...colorTotals.keys()],
-    sizeInventory: [...sizeTotals.entries()].map(([size, stock]) => ({ size, stock })),
-    colorInventory: [...colorTotals.entries()].map(([color, stock]) => ({ color, stock })),
-    stock: variantInventory.reduce((sum, entry) => sum + entry.stock, 0),
-  };
-}
-
 function normalizeProduct(product) {
-  const images = Array.isArray(product.images)
-    ? product.images.filter(Boolean)
-    : product.image
-      ? [product.image]
-      : [];
-  const colorImageMap = Object.fromEntries(
-    Object.entries(product.colorImageMap || {}).filter(
-      ([color, image]) => String(color || "").trim() && images.includes(image),
-    ),
-  );
-  const variantInventory = normalizeVariantInventoryEntries(product.variantInventory);
-  const variantSummary = variantInventory.length ? summarizeVariantInventory(variantInventory) : null;
-  const sizeInventory = variantSummary?.sizeInventory || normalizeSizeInventoryEntries(product.sizeInventory);
-  const colorInventory = variantSummary?.colorInventory || normalizeColorInventoryEntries(product.colorInventory);
-  const sizeOptions = variantSummary?.sizeOptions || (
-    Array.isArray(product.sizeOptions)
-      ? product.sizeOptions.map((size) => String(size || "").trim()).filter(Boolean)
-      : sizeInventory.map((entry) => entry.size)
-  );
-  const colorOptions = variantSummary?.colorOptions || (
-    Array.isArray(product.colorOptions)
-      ? product.colorOptions.map((color) => String(color || "").trim()).filter(Boolean)
-      : colorInventory.map((entry) => entry.color)
-  );
-  const sizeStockTotal = sizeInventory.length
-    ? sizeInventory.reduce((sum, entry) => sum + entry.stock, 0)
-    : null;
-  const colorStockTotal = colorInventory.length
-    ? colorInventory.reduce((sum, entry) => sum + entry.stock, 0)
-    : null;
-  const computedStock = variantSummary
-    ? variantSummary.stock
-    : sizeStockTotal !== null && colorStockTotal !== null
-      ? Math.min(sizeStockTotal, colorStockTotal)
-      : sizeStockTotal ?? colorStockTotal ?? Number(product.stock || 0);
-
   return {
     id: product.id || `product-${Date.now()}`,
     storeId: product.storeId || "",
@@ -179,20 +82,12 @@ function normalizeProduct(product) {
     category: product.category || "",
     price: Number(product.price || 0),
     originalPrice: Number(product.originalPrice || 0),
-    stock: computedStock,
+    stock: Number(product.stock || 0),
     status: product.status || "active",
     sales: Number(product.sales || 0),
     isNew: Boolean(product.isNew),
     description: product.description || "",
-    image: images[0] || product.image || "",
-    images,
-    colorImageMap,
-    sizeMode: product.sizeMode || "",
-    sizeOptions,
-    sizeInventory,
-    variantInventory,
-    colorOptions,
-    colorInventory,
+    image: product.image || "",
   };
 }
 
@@ -227,8 +122,6 @@ function normalizeCustomerState(customerState = {}) {
             ? value.cart.map((item) => ({
                 productId: item.productId || "",
                 quantity: Number(item.quantity || 1),
-                size: item.size ? String(item.size) : "",
-                color: item.color ? String(item.color) : "",
               }))
             : [],
         },
@@ -243,31 +136,9 @@ function normalizeCustomerWorkspace(workspace = {}) {
       ? workspace.cart.map((item) => ({
           productId: item.productId || "",
           quantity: Number(item.quantity || 1),
-          size: item.size ? String(item.size) : "",
-          color: item.color ? String(item.color) : "",
         }))
       : [],
   };
-}
-
-function buildCartItemKey(item) {
-  return `${item.productId || ""}::${item.size || ""}::${item.color || ""}`;
-}
-
-function mergeById(baseItems, incomingItems, normalizer) {
-  const merged = new Map();
-
-  baseItems.forEach((item) => {
-    const normalized = normalizer(item);
-    merged.set(normalized.id, normalized);
-  });
-
-  incomingItems.forEach((item) => {
-    const normalized = normalizer(item);
-    merged.set(normalized.id, normalized);
-  });
-
-  return [...merged.values()];
 }
 
 const seedData = {
@@ -331,38 +202,6 @@ const seedData = {
       contactPhone: "+970 598 222 333",
       address: "Nablus, Palestine",
       primaryColor: "#4f7cff",
-    }),
-    createStoreDefaults({
-      id: "store-6",
-      sellerId: "seller-1",
-      name: "Urban Wear Studio",
-      city: "Ramallah",
-      category: "Clothing",
-      description: "Modern clothing essentials with multiple sizes and clean styling.",
-      subscription: "Pro",
-      status: "approved",
-      monthlyRevenue: 10350,
-      ownerName: "Lina Khalil",
-      contactEmail: "hello@urbanwear.ps",
-      contactPhone: "+970 597 111 444",
-      address: "Ramallah, Palestine",
-      primaryColor: "#ef4444",
-    }),
-    createStoreDefaults({
-      id: "store-7",
-      sellerId: "seller-1",
-      name: "Stride Shoes",
-      city: "Bethlehem",
-      category: "Shoes",
-      description: "Sneakers and everyday footwear with flexible size options.",
-      subscription: "Pro",
-      status: "approved",
-      monthlyRevenue: 11840,
-      ownerName: "Lina Khalil",
-      contactEmail: "support@strideshoes.ps",
-      contactPhone: "+970 598 333 444",
-      address: "Bethlehem, Palestine",
-      primaryColor: "#0f766e",
     }),
     createStoreDefaults({
       id: "store-2",
@@ -475,87 +314,6 @@ const seedData = {
       isNew: true,
       description: "Soft matte ceramic pot for indoor plants and shelves.",
     }),
-    normalizeProduct({
-      id: "product-6",
-      storeId: "store-6",
-      name: "Classic Cotton T-Shirt",
-      category: "Clothing",
-      price: 25,
-      originalPrice: 35,
-      stock: 11,
-      status: "active",
-      sales: 24,
-      isNew: true,
-      description: "Soft everyday cotton t-shirt with a relaxed fit.",
-      sizeMode: "alpha",
-      sizeOptions: ["S", "M", "L", "XL"],
-      sizeInventory: [
-        { size: "S", stock: 3 },
-        { size: "M", stock: 4 },
-        { size: "L", stock: 2 },
-        { size: "XL", stock: 2 },
-      ],
-    }),
-    normalizeProduct({
-      id: "product-7",
-      storeId: "store-6",
-      name: "Slim Fit Hoodie",
-      category: "Clothing",
-      price: 49,
-      originalPrice: 59,
-      stock: 8,
-      status: "active",
-      sales: 17,
-      description: "Warm hoodie with a slim silhouette for casual daily wear.",
-      sizeMode: "alpha",
-      sizeOptions: ["M", "L", "XL"],
-      sizeInventory: [
-        { size: "M", stock: 3 },
-        { size: "L", stock: 3 },
-        { size: "XL", stock: 2 },
-      ],
-    }),
-    normalizeProduct({
-      id: "product-8",
-      storeId: "store-7",
-      name: "Street Runner 2.0",
-      category: "Shoes",
-      price: 79,
-      originalPrice: 99,
-      stock: 10,
-      status: "active",
-      sales: 21,
-      isNew: true,
-      description: "Lightweight urban sneakers built for comfort and daily movement.",
-      sizeMode: "numeric",
-      sizeOptions: ["41", "42", "43", "44"],
-      sizeInventory: [
-        { size: "41", stock: 2 },
-        { size: "42", stock: 3 },
-        { size: "43", stock: 3 },
-        { size: "44", stock: 2 },
-      ],
-    }),
-    normalizeProduct({
-      id: "product-9",
-      storeId: "store-7",
-      name: "Minimal Leather Loafers",
-      category: "Shoes",
-      price: 95,
-      originalPrice: 120,
-      stock: 8,
-      status: "active",
-      sales: 13,
-      description: "Clean leather loafers suitable for work and smart casual outfits.",
-      sizeMode: "numeric",
-      sizeOptions: ["40", "41", "42", "43"],
-      sizeInventory: [
-        { size: "40", stock: 2 },
-        { size: "41", stock: 2 },
-        { size: "42", stock: 3 },
-        { size: "43", stock: 1 },
-      ],
-    }),
   ],
   orders: [
     normalizeOrder({
@@ -622,8 +380,6 @@ const seedData = {
   storePreferences: {
     "store-1": { lowStockThreshold: 5 },
     "store-5": { lowStockThreshold: 4 },
-    "store-6": { lowStockThreshold: 3 },
-    "store-7": { lowStockThreshold: 3 },
   },
   sellerWorkspace: {
     "seller-1": {
@@ -654,21 +410,15 @@ function loadState() {
     return {
       ...seedData,
       ...parsed,
-      stores: mergeById(
-        seedData.stores,
-        (parsed.stores || []).filter((store) => store && typeof store === "object"),
-        createStoreDefaults,
-      ),
-      products: mergeById(
-        seedData.products,
-        (parsed.products || []).filter((product) => product && typeof product === "object"),
-        normalizeProduct,
-      ),
-      orders: mergeById(
-        seedData.orders,
-        (parsed.orders || []).filter((order) => order && typeof order === "object"),
-        normalizeOrder,
-      ),
+      stores: (parsed.stores || seedData.stores)
+        .filter((store) => store && typeof store === "object")
+        .map(createStoreDefaults),
+      products: (parsed.products || seedData.products)
+        .filter((product) => product && typeof product === "object")
+        .map(normalizeProduct),
+      orders: (parsed.orders || seedData.orders)
+        .filter((order) => order && typeof order === "object")
+        .map(normalizeOrder),
       storePreferences: {
         ...seedData.storePreferences,
         ...(parsed.storePreferences || {}),
@@ -708,15 +458,9 @@ function createAiDescription({ name, category, language }) {
 export function AppProvider({ children }) {
   const [state, setState] = useState(loadState);
   const [currentUser, setCurrentUser] = useState(null);
-  const [storageError, setStorageError] = useState("");
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      setStorageError("");
-    } catch {
-      setStorageError("storage-limit");
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
   useEffect(() => {
@@ -838,25 +582,17 @@ export function AppProvider({ children }) {
     });
   };
 
-  const addToCart = (storeId, productId, quantity = 1, options = {}) => {
+  const addToCart = (storeId, productId, quantity = 1) => {
     const customer = getStoreCustomer(storeId);
 
     if (!customer) {
       return { success: false, message: "Login required." };
     }
 
-    const selectedSize = options.size ? String(options.size) : "";
-    const selectedColor = options.color ? String(options.color) : "";
-
     setState((current) => {
       const customerScopes = normalizeCustomerState(current.customerState[customer.id]);
       const customerWorkspace = normalizeCustomerWorkspace(customerScopes[storeId]);
-      const existingItem = customerWorkspace.cart.find(
-        (item) =>
-          item.productId === productId &&
-          (item.size || "") === selectedSize &&
-          (item.color || "") === selectedColor,
-      );
+      const existingItem = customerWorkspace.cart.find((item) => item.productId === productId);
 
       return {
         ...current,
@@ -868,15 +604,7 @@ export function AppProvider({ children }) {
               ...customerWorkspace,
               cart: existingItem
                 ? customerWorkspace.cart
-                : [
-                    ...customerWorkspace.cart,
-                    {
-                      productId,
-                      quantity: Math.max(1, Number(quantity || 1)),
-                      size: selectedSize,
-                      color: selectedColor,
-                    },
-                  ],
+                : [...customerWorkspace.cart, { productId, quantity: Math.max(1, Number(quantity || 1)) }],
             },
           },
         },
@@ -886,7 +614,7 @@ export function AppProvider({ children }) {
     return { success: true };
   };
 
-  const updateCartQuantity = (storeId, productId, quantity, options = {}) => {
+  const updateCartQuantity = (storeId, productId, quantity) => {
     const customer = getStoreCustomer(storeId);
 
     if (!customer) {
@@ -894,8 +622,6 @@ export function AppProvider({ children }) {
     }
 
     const normalizedQuantity = Math.max(1, Number(quantity || 1));
-    const selectedSize = options.size ? String(options.size) : "";
-    const selectedColor = options.color ? String(options.color) : "";
 
     setState((current) => {
       const customerScopes = normalizeCustomerState(current.customerState[customer.id]);
@@ -910,9 +636,7 @@ export function AppProvider({ children }) {
             [storeId]: {
               ...customerWorkspace,
               cart: customerWorkspace.cart.map((item) =>
-                item.productId === productId &&
-                (item.size || "") === selectedSize &&
-                (item.color || "") === selectedColor
+                item.productId === productId
                   ? { ...item, quantity: normalizedQuantity }
                   : item,
               ),
@@ -923,15 +647,12 @@ export function AppProvider({ children }) {
     });
   };
 
-  const removeFromCart = (storeId, productId, options = {}) => {
+  const removeFromCart = (storeId, productId) => {
     const customer = getStoreCustomer(storeId);
 
     if (!customer) {
       return;
     }
-
-    const selectedSize = options.size ? String(options.size) : "";
-    const selectedColor = options.color ? String(options.color) : "";
 
     setState((current) => {
       const customerScopes = normalizeCustomerState(current.customerState[customer.id]);
@@ -945,14 +666,7 @@ export function AppProvider({ children }) {
             ...customerScopes,
             [storeId]: {
               ...customerWorkspace,
-              cart: customerWorkspace.cart.filter(
-                (item) =>
-                  !(
-                    item.productId === productId &&
-                    (item.size || "") === selectedSize &&
-                    (item.color || "") === selectedColor
-                  ),
-              ),
+              cart: customerWorkspace.cart.filter((item) => item.productId !== productId),
             },
           },
         },
@@ -991,57 +705,7 @@ export function AppProvider({ children }) {
         group.total += product.price * quantity;
         groupedByStore.set(product.storeId, group);
 
-        if (
-          Array.isArray(product.variantInventory) &&
-          product.variantInventory.length &&
-          item.size &&
-          item.color
-        ) {
-          product.variantInventory = product.variantInventory.map((entry) =>
-            entry.size === item.size && entry.color === item.color
-              ? { ...entry, stock: Math.max(0, entry.stock - quantity) }
-              : entry,
-          );
-
-          const variantSummary = summarizeVariantInventory(product.variantInventory);
-          product.sizeOptions = variantSummary.sizeOptions;
-          product.colorOptions = variantSummary.colorOptions;
-          product.sizeInventory = variantSummary.sizeInventory;
-          product.colorInventory = variantSummary.colorInventory;
-          product.stock = variantSummary.stock;
-          product.sales += quantity;
-          return;
-        }
-
-        if (Array.isArray(product.sizeInventory) && product.sizeInventory.length && item.size) {
-          product.sizeInventory = product.sizeInventory.map((entry) =>
-            entry.size === item.size
-              ? { ...entry, stock: Math.max(0, entry.stock - quantity) }
-              : entry,
-          );
-        }
-
-        if (Array.isArray(product.colorInventory) && product.colorInventory.length && item.color) {
-          product.colorInventory = product.colorInventory.map((entry) =>
-            entry.color === item.color
-              ? { ...entry, stock: Math.max(0, entry.stock - quantity) }
-              : entry,
-          );
-        }
-
-        if (Array.isArray(product.sizeInventory) && product.sizeInventory.length) {
-          const total = product.sizeInventory.reduce((sum, entry) => sum + entry.stock, 0);
-          if (Array.isArray(product.colorInventory) && product.colorInventory.length) {
-            const colorTotal = product.colorInventory.reduce((sum, entry) => sum + entry.stock, 0);
-            product.stock = Math.min(total, colorTotal);
-          } else {
-            product.stock = total;
-          }
-        } else if (Array.isArray(product.colorInventory) && product.colorInventory.length) {
-          product.stock = product.colorInventory.reduce((sum, entry) => sum + entry.stock, 0);
-        } else {
-          product.stock = Math.max(0, product.stock - quantity);
-        }
+        product.stock = Math.max(0, product.stock - quantity);
         product.sales += quantity;
       });
 
@@ -1064,7 +728,7 @@ export function AppProvider({ children }) {
 
       const customerScopes = normalizeCustomerState(current.customerState[customer.id]);
       const customerWorkspace = normalizeCustomerWorkspace(customerScopes[storeId]);
-      const purchasedIds = new Set(items.map((item) => buildCartItemKey(item)));
+      const purchasedIds = new Set(items.map((item) => item.productId));
 
       return {
         ...current,
@@ -1076,9 +740,7 @@ export function AppProvider({ children }) {
             ...customerScopes,
             [storeId]: {
               ...customerWorkspace,
-              cart: customerWorkspace.cart.filter(
-                (item) => !purchasedIds.has(buildCartItemKey(item)),
-              ),
+              cart: customerWorkspace.cart.filter((item) => !purchasedIds.has(item.productId)),
             },
           },
         },
@@ -1088,15 +750,8 @@ export function AppProvider({ children }) {
     return { success: true };
   };
 
-  const buyNow = (storeId, productId, quantity = 1, options = {}) =>
-    checkoutProducts(storeId, [
-      {
-        productId,
-        quantity: Number(quantity || 1),
-        size: options.size ? String(options.size) : "",
-        color: options.color ? String(options.color) : "",
-      },
-    ]);
+  const buyNow = (storeId, productId, quantity = 1) =>
+    checkoutProducts(storeId, [{ productId, quantity: Number(quantity || 1) }]);
 
   const addUser = (payload) => {
     setState((current) => ({
@@ -1374,44 +1029,28 @@ export function AppProvider({ children }) {
   };
 
   const addProduct = (payload) => {
-    setState((current) => {
-      const targetStore = current.stores.find((store) => store.id === payload.storeId);
-
-      if (!targetStore || targetStore.status !== "approved") {
-        return current;
-      }
-
-      return {
-        ...current,
-        products: [
-          ...current.products,
-          normalizeProduct({
-            id: `product-${Date.now()}`,
-            sales: 0,
-            ...payload,
-          }),
-        ],
-      };
-    });
+    setState((current) => ({
+      ...current,
+      products: [
+        ...current.products,
+        normalizeProduct({
+          id: `product-${Date.now()}`,
+          sales: 0,
+          ...payload,
+        }),
+      ],
+    }));
   };
 
   const updateProduct = (productId, payload) => {
-    setState((current) => {
-      const targetStore = current.stores.find((store) => store.id === payload.storeId);
-
-      if (!targetStore || targetStore.status !== "approved") {
-        return current;
-      }
-
-      return {
-        ...current,
-        products: current.products.map((product) =>
-          product.id === productId
-            ? normalizeProduct({ ...product, ...payload })
-            : product,
-        ),
-      };
-    });
+    setState((current) => ({
+      ...current,
+      products: current.products.map((product) =>
+        product.id === productId
+          ? normalizeProduct({ ...product, ...payload })
+          : product,
+      ),
+    }));
   };
 
   const deleteProduct = (productId) => {
@@ -1520,7 +1159,6 @@ export function AppProvider({ children }) {
       storeCustomerSessions: state.storeCustomerSessions,
       settings: state.settings,
       language: state.language,
-      storageError,
       currentUser,
       getStoreCustomer,
       getStoreCustomerWorkspace,
@@ -1552,7 +1190,7 @@ export function AppProvider({ children }) {
       setLanguage,
       resetAppData,
     }),
-    [state, currentUser, storageError],
+    [state, currentUser],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

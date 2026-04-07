@@ -301,7 +301,6 @@ export default function SellerStorePage() {
                 <button
                   className="secondary-button"
                   type="button"
-                  disabled={store.status !== "approved"}
                   onClick={() => navigate(`/store/${store.slug || store.id}`)}
                 >
                   {t.viewStore}

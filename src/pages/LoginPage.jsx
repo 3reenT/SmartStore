@@ -254,7 +254,31 @@ export default function LoginPage() {
               : t.loginHint}
           </p>
 
-          {isStoreAuth ? null : (
+          {isStoreAuth ? (
+            <div className="auth-provider-stack">
+              <button
+                type="button"
+                className="auth-provider-button"
+                onClick={() => handleProviderContinue("google")}
+              >
+                Google
+              </button>
+              <button
+                type="button"
+                className="auth-provider-button"
+                onClick={() => handleProviderContinue("apple")}
+              >
+                Apple
+              </button>
+              <button
+                type="button"
+                className="auth-provider-button"
+                onClick={() => handleProviderContinue("phone")}
+              >
+                {language === "ar" ? "المتابعة باستخدام رقم الهاتف" : "Continue with phone"}
+              </button>
+            </div>
+          ) : (
             <>
               <div className="credential-box">
                 <span>{t.demoAdminAccount}</span>
