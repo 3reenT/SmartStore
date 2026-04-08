@@ -11,10 +11,95 @@ function getStoreInitials(name) {
     .join("");
 }
 
+const pricingPlans = {
+  ar: [
+    {
+      name: "البداية",
+      price: "$100",
+      annualLabel: "سنويًا",
+      note: "مناسبة للتاجر الذي يبدأ متجره الأول بخطوات واضحة وبسيطة.",
+      cta: "ابدأ الآن",
+      features: ["متجر واحد", "منتجات غير محدودة", "إدارة طلبات أساسية", "دعم عبر واتساب"],
+    },
+    {
+      name: "النمو",
+      price: "$190",
+      annualLabel: "سنويًا",
+      note: "الخيار الأنسب لمعظم المتاجر التي تريد مظهرًا أقوى وإدارة أسرع.",
+      cta: "الخطة الأكثر طلبًا",
+      features: ["تخصيص أكبر", "تقارير أوضح", "ألوان وشعارات المتجر", "دعم أسرع"],
+      featured: true,
+    },
+    {
+      name: "التوسع",
+      price: "$300",
+      annualLabel: "سنويًا",
+      note: "للمتاجر التي تحتاج تجربة أقوى وتحكمًا أوسع ونموًا أكثر ثباتًا.",
+      cta: "ابدأ الآن",
+      features: ["تحكم متقدم", "تقارير أعمق", "مرونة أعلى للفريق", "أولوية في الدعم"],
+    },
+  ],
+  en: [
+    {
+      name: "Starter",
+      price: "$100",
+      annualLabel: "per year",
+      note: "A practical starting point for sellers launching their first store.",
+      cta: "Start now",
+      features: ["One store", "Unlimited products", "Core order management", "WhatsApp support"],
+    },
+    {
+      name: "Growth",
+      price: "$190",
+      annualLabel: "per year",
+      note: "The best fit for active stores that want a stronger storefront and smoother operations.",
+      cta: "Most requested",
+      features: ["More customization", "Clearer insights", "Store colors and branding", "Faster support"],
+      featured: true,
+    },
+    {
+      name: "Scale",
+      price: "$300",
+      annualLabel: "per year",
+      note: "Built for brands that need stronger control, cleaner workflows, and room to grow.",
+      cta: "Start now",
+      features: ["Advanced controls", "Deeper reports", "Higher team flexibility", "Priority support"],
+    },
+  ],
+};
+
+const launchSteps = {
+  ar: {
+    title: "خطوات بسيطة تصنع فرقًا",
+    subtitle: "ابدأ البيع أسرع بثلاث خطوات واضحة",
+    steps: [
+      { title: "أضف المنتجات", text: "ارفع صورك، الأسعار، والمخزون من مكان واحد." },
+      { title: "خصص المتجر", text: "اختر شكل متجرك والأقسام والهوية التي تناسبك." },
+      { title: "استقبل الطلبات", text: "تابع الطلبات والمبيعات من لوحة واضحة وسريعة." },
+    ],
+    guaranteeTitle: "تجربة مرنة وواضحة",
+    guaranteeText: "كل شيء مرتب للتاجر من أول منتج وحتى متابعة الطلبات، بدون تعقيد في الإدارة اليومية.",
+  },
+  en: {
+    title: "Simple steps that create momentum",
+    subtitle: "Start selling faster with three clear actions",
+    steps: [
+      { title: "Add products", text: "Upload images, prices, and stock from one place." },
+      { title: "Customize the store", text: "Shape your storefront, sections, and overall identity." },
+      { title: "Receive orders", text: "Follow orders and sales from one focused dashboard." },
+    ],
+    guaranteeTitle: "A cleaner seller workflow",
+    guaranteeText: "From the first product to daily order follow-up, the experience stays clear and lightweight.",
+  },
+};
+
 export default function HomePage() {
   const { currentUser, language, stores } = useApp();
   const t = translations[language];
+  const isArabic = language === "ar";
   const featuredStores = stores.filter((store) => store.status === "approved").slice(0, 8);
+  const plans = pricingPlans[language] || pricingPlans.en;
+  const stepsContent = launchSteps[language] || launchSteps.en;
 
   const primaryLink =
     currentUser?.role === "admin"
@@ -43,14 +128,14 @@ export default function HomePage() {
         <div className="guest-hero-copy">
           <span className="eyebrow">{t.smartstore}</span>
           <h1>
-            {language === "ar"
-              ? "كن أنت وابدأ تجارتك الإلكترونية"
-              : "Launch your online commerce presence with confidence"}
+            {isArabic
+              ? "ابدأ متجرك الإلكتروني بثقة ومن غير تعقيد"
+              : "Launch your online store with more clarity and confidence"}
           </h1>
           <p>
-            {language === "ar"
-              ? "منصة ذكية تساعد المتاجر المحلية على البيع، إدارة الطلبات، متابعة المخزون، والنمو من مكان واحد."
-              : "A modern platform for local businesses to sell online, manage orders, track inventory, and grow from one place."}
+            {isArabic
+              ? "منصة تساعد التاجر على إدارة المنتجات، الطلبات، المخزون، وتجربة المتجر العامة من مكان واحد."
+              : "A focused platform that helps sellers manage products, orders, inventory, and the storefront experience from one place."}
           </p>
 
           <div className="guest-hero-actions">
@@ -60,25 +145,67 @@ export default function HomePage() {
           </div>
 
           <div className="guest-meta-row">
-            <span>{language === "ar" ? "ثنائي اللغة" : "Bilingual"}</span>
-            <span>{language === "ar" ? "ذكاء اصطناعي" : "AI-ready"}</span>
-            <span>{language === "ar" ? "إدارة متجر كاملة" : "Full store operations"}</span>
+            <span>{isArabic ? "ثنائي اللغة" : "Bilingual"}</span>
+            <span>{isArabic ? "جاهز للذكاء الاصطناعي" : "AI-ready"}</span>
+            <span>{isArabic ? "إدارة متجر كاملة" : "Full store operations"}</span>
           </div>
           {!currentUser ? (
             <Link className="workspace-access-link" to="/login">
-              {language === "ar" ? "دخول الأدمن والتاجر" : "Admin & seller access"}
+              {isArabic ? "دخول الأدمن والتاجر" : "Admin & seller access"}
             </Link>
           ) : null}
         </div>
       </section>
 
+      <section className="guest-pricing">
+        <div className="guest-section-intro compact">
+          <span className="eyebrow">{isArabic ? "بلا تعقيد" : "No complexity"}</span>
+          <h2>{isArabic ? "خطط واضحة تتطور مع نجاحك" : "Clear plans that grow with your store"}</h2>
+          <p>
+            {isArabic
+              ? "كل خطة تمنح متجرك الأدوات التي يحتاجها، مع سعر سنوي مناسب يبدأ من 100 وحتى 300 دولار."
+              : "Each plan gives your store the tools it needs, with simple annual pricing from $100 to $300."}
+          </p>
+        </div>
+
+        <div className="guest-pricing-grid">
+          {plans.map((plan) => (
+            <article
+              key={plan.name}
+              className={`pricing-card${plan.featured ? " featured" : ""}`}
+            >
+              {plan.featured ? (
+                <span className="pricing-badge">
+                  {isArabic ? "الأكثر طلبًا" : "Most requested"}
+                </span>
+              ) : null}
+              <span className="pricing-plan-name">{plan.name}</span>
+              <div className="pricing-price-wrap">
+                <strong className="pricing-plan-price">{plan.price}</strong>
+                <span className="pricing-plan-period">{plan.annualLabel}</span>
+              </div>
+              <p>{plan.note}</p>
+              <button
+                className={plan.featured ? "primary-button pricing-cta" : "secondary-button pricing-cta"}
+                type="button"
+              >
+                {plan.cta}
+              </button>
+              <div className="pricing-feature-list">
+                {plan.features.map((feature) => (
+                  <span key={feature}>{feature}</span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="guest-foundation">
         <div className="guest-section-intro">
-          <span className="eyebrow">
-            {language === "ar" ? "أساسيات النجاح" : "Success foundation"}
-          </span>
+          <span className="eyebrow">{isArabic ? "أساسيات النجاح" : "Success foundation"}</span>
           <h2>
-            {language === "ar"
+            {isArabic
               ? "كل ما يحتاجه التاجر في منصة واحدة"
               : "Everything a seller needs in one platform"}
           </h2>
@@ -87,97 +214,52 @@ export default function HomePage() {
         <div className="guest-foundation-grid">
           <article className="foundation-card">
             <div className="foundation-visual monitor" />
-            <h3>{language === "ar" ? "لوحة تحكم واضحة" : "Clear operations dashboard"}</h3>
+            <h3>{isArabic ? "لوحة تحكم واضحة" : "Clear operations dashboard"}</h3>
             <p>
-              {language === "ar"
-                ? "تابع الطلبات، المنتجات، والإيرادات من مساحة موحدة."
-                : "Track orders, catalog, and revenue from one focused workspace."}
+              {isArabic
+                ? "تابع الطلبات والمنتجات والإيرادات من مساحة واحدة."
+                : "Track orders, catalog changes, and revenue from one focused workspace."}
             </p>
           </article>
 
           <article className="foundation-card">
             <div className="foundation-visual analytics" />
-            <h3>{language === "ar" ? "نمو أسرع" : "Faster growth"}</h3>
+            <h3>{isArabic ? "نمو أسرع" : "Faster growth"}</h3>
             <p>
-              {language === "ar"
+              {isArabic
                 ? "تحليلات ومؤشرات تساعدك على فهم أداء متجرك بشكل يومي."
-                : "Daily insights and metrics that help you understand store performance."}
+                : "Daily insights that make store performance easier to understand."}
             </p>
           </article>
 
           <article className="foundation-card">
             <div className="foundation-visual delivery" />
-            <h3>{language === "ar" ? "توصيل متكامل" : "Integrated delivery"}</h3>
+            <h3>{isArabic ? "إدارة تنفيذ أسلس" : "Smoother fulfillment"}</h3>
             <p>
-              {language === "ar"
-                ? "اربط الطلبات مع خدمات التوصيل وتتبع التنفيذ بسهولة."
-                : "Connect orders with delivery services and follow fulfillment smoothly."}
+              {isArabic
+                ? "نظّم الطلبات والمتابعة والمخزون بطريقة أبسط."
+                : "Handle orders, follow-up, and stock with less friction."}
             </p>
           </article>
 
           <article className="foundation-card">
             <div className="foundation-visual mobile" />
-            <h3>{language === "ar" ? "تجربة موبايل" : "Mobile-first experience"}</h3>
+            <h3>{isArabic ? "تجربة مناسبة للموبايل" : "Mobile-ready experience"}</h3>
             <p>
-              {language === "ar"
-                ? "واجهة مناسبة للضيف والتاجر على الهاتف والويب."
-                : "A polished experience for both guests and sellers across mobile and web."}
+              {isArabic
+                ? "واجهة مناسبة للتاجر والزبون على الهاتف والويب."
+                : "A cleaner experience for both sellers and shoppers across devices."}
             </p>
           </article>
         </div>
       </section>
 
-      <section className="guest-story-grid">
-        <article className="story-panel story-panel-wide">
-          <div className="story-copy">
-            <span className="eyebrow">
-              {language === "ar" ? "تسويق أذكى" : "Smarter marketing"}
-            </span>
-            <h2>
-              {language === "ar"
-                ? "وفّر أكثر من وقتك وأموال إعلاناتك"
-                : "Save more of your time and ad budget"}
-            </h2>
-            <p>
-              {language === "ar"
-                ? "اعتمد على تحليلات واضحة وأفكار ذكية تساعدك على تحسين الحملات واتخاذ قرارات أسرع."
-                : "Use clear analytics and intelligent suggestions to improve campaigns and make faster decisions."}
-            </p>
-            <div className="story-list">
-              <span>{language === "ar" ? "تقارير أداء مبسطة" : "Simplified performance reports"}</span>
-              <span>{language === "ar" ? "وصف منتجات ذكي" : "AI product descriptions"}</span>
-              <span>{language === "ar" ? "تنبيهات تشغيلية" : "Operational alerts"}</span>
-            </div>
-          </div>
-          <div className="story-visual gradient-card" />
-        </article>
-
-        <article className="story-panel">
-          <div className="story-visual phone-card" />
-          <div className="story-copy">
-            <span className="eyebrow">
-              {language === "ar" ? "تجربة متكاملة" : "Connected experience"}
-            </span>
-            <h2>
-              {language === "ar"
-                ? "حول متجرك إلى تجربة علامة متكاملة"
-                : "Turn your store into a polished brand experience"}
-            </h2>
-            <p>
-              {language === "ar"
-                ? "من التصفح وحتى الإشعارات، تبقى تجربة العميل متناسقة وواضحة."
-                : "From browsing to notifications, the customer journey stays consistent and clear."}
-            </p>
-          </div>
-        </article>
-      </section>
-
       <section className="guest-brands">
         <div className="guest-section-intro compact">
-          <span className="eyebrow">{language === "ar" ? "قصص نجاح" : "Trusted by stores"}</span>
+          <span className="eyebrow">{isArabic ? "متاجر معروضة" : "Featured stores"}</span>
           <h2>
-            {language === "ar"
-              ? "متاجر حقيقية يمكنك زيارتها مباشرة"
+            {isArabic
+              ? "متاجر حقيقية يمكنك تصفحها مباشرة"
               : "Real storefronts you can explore directly"}
           </h2>
         </div>
@@ -207,6 +289,34 @@ export default function HomePage() {
               <small>{store.category}</small>
             </a>
           ))}
+        </div>
+      </section>
+
+      <section className="guest-steps-footer">
+        <div className="guest-section-intro compact">
+          <span className="eyebrow">{isArabic ? "ابدأ أسرع" : "Move faster"}</span>
+          <h2>{stepsContent.title}</h2>
+          <p>{stepsContent.subtitle}</p>
+        </div>
+
+        <div className="steps-footer-card">
+          <div className="steps-footer-grid">
+            {stepsContent.steps.map((step, index) => (
+              <article key={step.title} className="steps-footer-item">
+                <span className="steps-footer-number">{index + 1}</span>
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="steps-guarantee-card">
+          <div>
+            <span className="eyebrow">{isArabic ? "واجهة أنظف" : "Cleaner workflow"}</span>
+            <h3>{stepsContent.guaranteeTitle}</h3>
+            <p>{stepsContent.guaranteeText}</p>
+          </div>
         </div>
       </section>
     </section>

@@ -1,5 +1,5 @@
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../state/AppContext";
 import StorefrontTopBar from "../components/StorefrontTopBar";
 
@@ -9,6 +9,22 @@ function formatCurrency(value) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
+}
+
+function getSelectionStock(product, size, color) {
+  if (product.hasSizes && product.hasColors) {
+    return Number(product.variantInventory?.[`${size}|${color}`] || 0);
+  }
+
+  if (product.hasSizes) {
+    return Number(product.sizeInventory?.[size] || 0);
+  }
+
+  if (product.hasColors) {
+    return Number(product.colorInventory?.[color] || 0);
+  }
+
+  return Number(product.stock || 0);
 }
 
 export default function PublicProductPage() {
@@ -26,9 +42,53 @@ export default function PublicProductPage() {
     addToCart,
     buyNow,
   } = useApp();
-
+  const isArabic = language === "ar";
   const store = stores.find((item) => item.slug === slug || item.id === slug) || null;
   const product = products.find((item) => item.id === productId) || null;
+  const productImages = Array.isArray(product?.images) && product.images.length
+    ? product.images
+    : product?.image
+      ? [product.image]
+      : [];
+  const [activeImage, setActiveImage] = useState(productImages[0] || "");
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectionError, setSelectionError] = useState("");
+
+  useEffect(() => {
+    setActiveImage(productImages[0] || "");
+  }, [productId, product?.image, productImages]);
+
+  useEffect(() => {
+    if (product?.hasSizes) {
+      setSelectedSize(product.sizeOptions?.[0] || "");
+    } else {
+      setSelectedSize("");
+    }
+
+    if (product?.hasColors) {
+      setSelectedColor(product.colorOptions?.[0] || "");
+    } else {
+      setSelectedColor("");
+    }
+
+    setSelectionError("");
+  }, [productId, product?.hasSizes, product?.hasColors, product?.sizeOptions, product?.colorOptions]);
+
+  useEffect(() => {
+    if (!product?.hasColors || !selectedColor) {
+      if (productImages[0]) {
+        setActiveImage(productImages[0]);
+      }
+      return;
+    }
+
+    const mappedImage = product.colorImageMap?.[selectedColor];
+
+    if (mappedImage) {
+      setActiveImage(mappedImage);
+    }
+  }, [product, selectedColor]);
 
   if (!store || !product || product.storeId !== store.id) {
     return <Navigate to="/" replace />;
@@ -63,6 +123,7 @@ export default function PublicProductPage() {
     from: `${location.pathname}${location.search}${location.hash}`,
     storeId: store.id,
   };
+  const currentStock = getSelectionStock(product, selectedSize, selectedColor);
 
   const requireCustomer = (callback) => {
     if (isCustomer) {
@@ -73,6 +134,52 @@ export default function PublicProductPage() {
     navigate("/login", { state: loginRedirectState });
   };
 
+  const validateSelection = () => {
+    if (product.hasSizes && !selectedSize) {
+      setSelectionError(isArabic ? "اختر المقاس أولًا." : "Select a size first.");
+      return false;
+    }
+
+    if (product.hasColors && !selectedColor) {
+      setSelectionError(isArabic ? "اختر اللون أولًا." : "Select a color first.");
+      return false;
+    }
+
+    if (!currentStock) {
+      setSelectionError(isArabic ? "هذا الخيار غير متوفر حاليًا." : "This option is currently unavailable.");
+      return false;
+    }
+
+    setSelectionError("");
+    return true;
+  };
+
+  const handleAddToCart = () => {
+    if (!validateSelection()) {
+      return;
+    }
+
+    requireCustomer(() =>
+      addToCart(store.id, product.id, 1, {
+        size: selectedSize,
+        color: selectedColor,
+      }),
+    );
+  };
+
+  const handleBuyNow = () => {
+    if (!validateSelection()) {
+      return;
+    }
+
+    requireCustomer(() =>
+      buyNow(store.id, product.id, 1, {
+        size: selectedSize,
+        color: selectedColor,
+      }),
+    );
+  };
+
   return (
     <section className="public-product-page">
       <StorefrontTopBar
@@ -81,7 +188,7 @@ export default function PublicProductPage() {
       />
 
       <nav className="product-breadcrumb">
-        <Link to="/">{language === "ar" ? "الرئيسية" : "Home"}</Link>
+        <Link to="/">{isArabic ? "الرئيسية" : "Home"}</Link>
         <span>/</span>
         <Link to={`/store/${store.slug || store.id}`}>{store.name}</Link>
         <span>/</span>
@@ -93,13 +200,14 @@ export default function PublicProductPage() {
       <section className="public-product-hero">
         <div className="public-product-gallery">
           <div className="public-product-thumbs">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <button key={index} type="button" className="public-product-thumb-button">
-                {product.image ? (
-                  <img src={product.image} alt={product.name} className="public-product-thumb-image" />
-                ) : (
-                  <span>{product.category}</span>
-                )}
+            {productImages.map((image, index) => (
+              <button
+                key={`${image}-${index}`}
+                type="button"
+                className={`public-product-thumb-button${activeImage === image ? " active" : ""}`}
+                onClick={() => setActiveImage(image)}
+              >
+                <img src={image} alt={`${product.name} ${index + 1}`} className="public-product-thumb-image" />
               </button>
             ))}
           </div>
@@ -107,8 +215,8 @@ export default function PublicProductPage() {
           <div className="public-product-main-image-card">
             {discount > 0 ? <span className="product-sale-badge">-{discount}%</span> : null}
             {product.isNew ? <span className="product-new-badge">NEW</span> : null}
-            {product.image ? (
-              <img src={product.image} alt={product.name} className="public-product-main-image" />
+            {activeImage ? (
+              <img src={activeImage} alt={product.name} className="public-product-main-image" />
             ) : (
               <div className="public-product-main-image placeholder">{product.category}</div>
             )}
@@ -129,7 +237,7 @@ export default function PublicProductPage() {
               className={isFavorite ? "favorite-button active" : "favorite-button"}
               onClick={() => requireCustomer(() => toggleFavorite(store.id, product.id))}
             >
-              {language === "ar"
+              {isArabic
                 ? isFavorite
                   ? "إزالة من المفضلة"
                   : "إضافة إلى المفضلة"
@@ -143,26 +251,71 @@ export default function PublicProductPage() {
             <span>{store.name}</span>
             <span>{product.category}</span>
             <span>
-              {language === "ar" ? "المخزون" : "Stock"}: {product.stock}
+              {isArabic ? "المخزون" : "Stock"}: {currentStock}
             </span>
           </div>
 
+          {product.hasSizes ? (
+            <div className="public-product-option-group">
+              <h3>{isArabic ? "اختر المقاس" : "Choose size"}</h3>
+              <div className="public-product-option-list">
+                {product.sizeOptions.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`public-option-chip${selectedSize === size ? " active" : ""}`}
+                    onClick={() => {
+                      setSelectedSize(size);
+                      setSelectionError("");
+                    }}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {product.hasColors ? (
+            <div className="public-product-option-group">
+              <h3>{isArabic ? "اختر اللون" : "Choose color"}</h3>
+              <div className="public-product-option-list">
+                {product.colorOptions.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`public-option-chip${selectedColor === color ? " active" : ""}`}
+                    onClick={() => {
+                      setSelectedColor(color);
+                      setSelectionError("");
+                    }}
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <p className="public-product-description">{product.description}</p>
+          {selectionError ? <p className="form-error">{selectionError}</p> : null}
 
           <div className="public-product-action-stack">
             <button
               className="primary-button public-product-action secondary-dark"
               type="button"
-              onClick={() => requireCustomer(() => addToCart(store.id, product.id, 1))}
+              onClick={handleAddToCart}
+              disabled={!currentStock}
             >
-              {language === "ar" ? "إضافة إلى السلة" : "Add to cart"}
+              {isArabic ? "إضافة إلى السلة" : "Add to cart"}
             </button>
             <button
               className="primary-button public-product-action secondary-dark"
               type="button"
-              onClick={() => requireCustomer(() => buyNow(store.id, product.id, 1))}
+              onClick={handleBuyNow}
+              disabled={!currentStock}
             >
-              {language === "ar" ? "شراء الآن" : "Buy now"}
+              {isArabic ? "شراء الآن" : "Buy now"}
             </button>
             <a
               className="public-whatsapp-cta"
@@ -170,15 +323,15 @@ export default function PublicProductPage() {
               target="_blank"
               rel="noreferrer"
             >
-              {language === "ar" ? "للتواصل اضغط هنا" : "Contact on WhatsApp"}
+              {isArabic ? "للتواصل اضغط هنا" : "Contact on WhatsApp"}
             </a>
           </div>
 
           <div className="public-product-mini-actions">
-            <button type="button">{language === "ar" ? "مشاركة" : "Share"}</button>
-            <button type="button">{language === "ar" ? "اسأل عن المنتج" : "Ask a question"}</button>
+            <button type="button">{isArabic ? "مشاركة" : "Share"}</button>
+            <button type="button">{isArabic ? "اسأل عن المنتج" : "Ask a question"}</button>
             <Link to={`/store/${store.slug || store.id}`}>
-              {language === "ar" ? "عرض المتجر" : "Browse store"}
+              {isArabic ? "عرض المتجر" : "Browse store"}
             </Link>
           </div>
         </div>
@@ -186,8 +339,8 @@ export default function PublicProductPage() {
 
       <section className="public-store-section">
         <div className="public-store-section-heading">
-          <span>{language === "ar" ? "منتجات مشابهة" : "Related products"}</span>
-          <h2>{language === "ar" ? "قد يعجبك أيضًا" : "You may also like"}</h2>
+          <span>{isArabic ? "منتجات مشابهة" : "Related products"}</span>
+          <h2>{isArabic ? "قد يعجبك أيضًا" : "You may also like"}</h2>
         </div>
 
         <div className="public-product-grid">

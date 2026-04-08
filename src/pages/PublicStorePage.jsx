@@ -1,4 +1,5 @@
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../state/AppContext";
 import StorefrontTopBar from "../components/StorefrontTopBar";
 
@@ -19,84 +20,6 @@ function getStoreInitials(name) {
     .join("");
 }
 
-function getCategorySymbol(category, language) {
-  const normalized = String(category || "").toLowerCase();
-
-  if (
-    normalized.includes("watch") ||
-    normalized.includes("ساع")
-  ) {
-    return "⌚";
-  }
-
-  if (
-    normalized.includes("blazer") ||
-    normalized.includes("shirt") ||
-    normalized.includes("قميص") ||
-    normalized.includes("بليزر")
-  ) {
-    return "👔";
-  }
-
-  if (
-    normalized.includes("jacket") ||
-    normalized.includes("جاكيت")
-  ) {
-    return "🧥";
-  }
-
-  if (
-    normalized.includes("pants") ||
-    normalized.includes("trouser") ||
-    normalized.includes("بنطال")
-  ) {
-    return "👖";
-  }
-
-  if (
-    normalized.includes("shoe") ||
-    normalized.includes("sneaker") ||
-    normalized.includes("أحذية")
-  ) {
-    return "👟";
-  }
-
-  if (
-    normalized.includes("perfume") ||
-    normalized.includes("عطر")
-  ) {
-    return "🧴";
-  }
-
-  if (
-    normalized.includes("accessor") ||
-    normalized.includes("اكسسوار")
-  ) {
-    return "✦";
-  }
-
-  if (
-    normalized.includes("laptop") ||
-    normalized.includes("electronics") ||
-    normalized.includes("tech") ||
-    normalized.includes("إلكترون")
-  ) {
-    return "💻";
-  }
-
-  if (
-    normalized.includes("home") ||
-    normalized.includes("decor") ||
-    normalized.includes("furniture") ||
-    normalized.includes("منزل") ||
-    normalized.includes("أثاث")
-  ) {
-    return "⌂";
-  }
-
-  return language === "ar" ? "◂" : "▸";
-}
-
 function getCategoryBarStyle(color) {
   const accent = color || "#8c5729";
 
@@ -109,6 +32,8 @@ export default function PublicStorePage() {
   const { slug } = useParams();
   const location = useLocation();
   const { stores, products, language, currentUser } = useApp();
+  const [activeShowcaseIndex, setActiveShowcaseIndex] = useState(0);
+  const isArabic = language === "ar";
   const store = stores.find((item) => item.slug === slug || item.id === slug) || null;
 
   if (!store) {
@@ -150,6 +75,28 @@ export default function PublicStorePage() {
     }))
     .filter((group) => group.products.length);
   const showcaseImages = Array.isArray(store.galleryImages) ? store.galleryImages.filter(Boolean) : [];
+  const sectionLogos =
+    store.sectionLogos && typeof store.sectionLogos === "object" ? store.sectionLogos : {};
+  const homeSectionKey = isArabic ? "الرئيسية" : "Home";
+
+  useEffect(() => {
+    if (showcaseImages.length <= 1) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setActiveShowcaseIndex((current) => (current + 1) % showcaseImages.length);
+    }, 3200);
+
+    return () => window.clearInterval(timer);
+  }, [showcaseImages]);
+
+  const activeShowcaseImage = showcaseImages[activeShowcaseIndex] || showcaseImages[0] || "";
+  const showcaseThumbs = useMemo(
+    () =>
+      showcaseImages.filter((_, index) => index !== activeShowcaseIndex).slice(0, 4),
+    [showcaseImages, activeShowcaseIndex],
+  );
 
   return (
     <section className="public-store-page">
@@ -165,7 +112,7 @@ export default function PublicStorePage() {
       >
         <div className="public-store-hero-inner">
           <div className="public-store-brand">
-            {store.logo && store.logo !== "/logo.png" ? (
+            {store.logo ? (
               <img src={store.logo} alt={store.name} className="public-store-logo" />
             ) : (
               <div className="public-store-logo public-store-logo-fallback">
@@ -175,12 +122,12 @@ export default function PublicStorePage() {
 
             <div className="public-store-copy">
               <span className="public-store-eyebrow">
-                {language === "ar" ? "متجر محلي مميز" : "Featured local store"}
+                {isArabic ? "متجر محلي مميز" : "Featured local store"}
               </span>
               <h1>{store.name}</h1>
               <p>
                 {store.description ||
-                  (language === "ar"
+                  (isArabic
                     ? "واجهة متجر عامة جاهزة للعرض والتصفح."
                     : "A polished public storefront ready for browsing and discovery.")}
               </p>
@@ -194,15 +141,15 @@ export default function PublicStorePage() {
 
           <div className="public-store-highlight">
             <div className="public-store-highlight-card">
-              <span>{language === "ar" ? "عدد المنتجات" : "Products"}</span>
+              <span>{isArabic ? "عدد المنتجات" : "Products"}</span>
               <strong>{storeProducts.length}</strong>
             </div>
             <div className="public-store-highlight-card">
-              <span>{language === "ar" ? "التصنيفات" : "Categories"}</span>
+              <span>{isArabic ? "التصنيفات" : "Categories"}</span>
               <strong>{categories.length}</strong>
             </div>
             <div className="public-store-highlight-card">
-              <span>{language === "ar" ? "مدينة المتجر" : "City"}</span>
+              <span>{isArabic ? "مدينة المتجر" : "City"}</span>
               <strong>{store.city || "-"}</strong>
             </div>
           </div>
@@ -212,8 +159,8 @@ export default function PublicStorePage() {
       <section className="storefront-catalog-layout">
         <aside className="storefront-categories-sidebar">
           <div className="public-store-section-heading storefront-side-heading">
-            <span>{language === "ar" ? "تصفح التصنيفات" : "Browse categories"}</span>
-            <h2>{language === "ar" ? "أقسام المتجر" : "Store categories"}</h2>
+            <span>{isArabic ? "تصفح التصنيفات" : "Browse categories"}</span>
+            <h2>{isArabic ? "أقسام المتجر" : "Store categories"}</h2>
           </div>
 
           <div className="store-categories-list">
@@ -221,9 +168,17 @@ export default function PublicStorePage() {
               className={categoryFilter ? "store-category-list-item" : "store-category-list-item active"}
               to={`/store/${store.slug || store.id}${searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : ""}#store-products`}
             >
-              <span className="store-category-arrow">{language === "ar" ? "‹" : "›"}</span>
-              <strong>{language === "ar" ? "الرئيسية" : "All products"}</strong>
-              <span className="store-category-icon">⌂</span>
+              <span className="store-category-arrow">{isArabic ? "‹" : "›"}</span>
+              <strong>{isArabic ? "الرئيسية" : "All products"}</strong>
+              <span className="store-category-icon">
+                {sectionLogos[homeSectionKey] ? (
+                  <img
+                    src={sectionLogos[homeSectionKey]}
+                    alt={homeSectionKey}
+                    className="store-category-logo-image"
+                  />
+                ) : null}
+              </span>
             </Link>
 
             {categories.length ? (
@@ -240,16 +195,22 @@ export default function PublicStorePage() {
                     category,
                   }).toString()}#store-products`}
                 >
-                  <span className="store-category-arrow">{language === "ar" ? "‹" : "›"}</span>
+                  <span className="store-category-arrow">{isArabic ? "‹" : "›"}</span>
                   <strong>{category}</strong>
                   <span className="store-category-icon">
-                    {getCategorySymbol(category, language)}
+                    {sectionLogos[category] ? (
+                      <img
+                        src={sectionLogos[category]}
+                        alt={category}
+                        className="store-category-logo-image"
+                      />
+                    ) : null}
                   </span>
                 </Link>
               ))
             ) : (
               <div className="public-empty-state">
-                {language === "ar"
+                {isArabic
                   ? "لا توجد تصنيفات بعد. أضف منتجات لهذا المتجر ليظهر العرض العام."
                   : "No categories yet. Add products to this store to populate the public page."}
               </div>
@@ -269,15 +230,15 @@ export default function PublicStorePage() {
               >
                 <div className="storefront-showcase-feature">
                   <img
-                    src={showcaseImages[0]}
+                    src={activeShowcaseImage}
                     alt={`${store.name} showcase`}
                     className="storefront-showcase-feature-image"
                   />
                 </div>
 
-                {showcaseImages.length > 1 ? (
+                {showcaseThumbs.length ? (
                   <div className="storefront-showcase-grid">
-                    {showcaseImages.slice(1, 5).map((image, index) => (
+                    {showcaseThumbs.map((image, index) => (
                       <div key={`${index}-${image.slice(0, 24)}`} className="storefront-showcase-tile">
                         <img
                           src={image}
@@ -289,26 +250,25 @@ export default function PublicStorePage() {
                   </div>
                 ) : null}
               </div>
+
+              {showcaseImages.length > 1 ? (
+                <div className="storefront-showcase-dots">
+                  {showcaseImages.map((image, index) => (
+                    <button
+                      key={`${image.slice(0, 18)}-${index}`}
+                      type="button"
+                      className={index === activeShowcaseIndex ? "showcase-dot active" : "showcase-dot"}
+                      onClick={() => setActiveShowcaseIndex(index)}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </section>
           ) : null}
 
           <div className="public-store-section-heading" id={showcaseImages.length ? undefined : "store-products"}>
-            <span>{language === "ar" ? "منتجات مميزة" : "Featured products"}</span>
-            <h2>{language === "ar" ? "جميع منتجات المتجر حسب التصنيف" : "All store products by category"}</h2>
-            {categoryFilter ? (
-              <p className="storefront-search-result-note">
-                {language === "ar"
-                  ? `التصنيف الحالي: ${categoryFilter}`
-                  : `Current category: ${categoryFilter}`}
-              </p>
-            ) : null}
-            {searchTerm ? (
-              <p className="storefront-search-result-note">
-                {language === "ar"
-                  ? `نتائج البحث عن: ${searchTerm}`
-                  : `Search results for: ${searchTerm}`}
-              </p>
-            ) : null}
+            <span>{isArabic ? "منتجات مميزة" : "Featured products"}</span>
+            <h2>{isArabic ? "جميع منتجات المتجر حسب التصنيف" : "All store products by category"}</h2>
           </div>
 
           {groupedProducts.length ? (
@@ -319,12 +279,19 @@ export default function PublicStorePage() {
                     className="storefront-category-section-head"
                     style={getCategoryBarStyle(store.primaryColor)}
                   >
-                    <h3>{group.category}</h3>
-                    <span className="storefront-category-pill">
-                      {language === "ar"
-                        ? `${group.products.length} منتج`
-                        : `${group.products.length} products`}
-                    </span>
+                    <div className="storefront-category-title">
+                      <span className="storefront-category-head-logo">
+                        {sectionLogos[group.category] ? (
+                          <img
+                            src={sectionLogos[group.category]}
+                            alt={group.category}
+                            className="store-category-logo-image"
+                          />
+                        ) : null}
+                      </span>
+                      <strong>{group.category}</strong>
+                    </div>
+                    <span>{group.products.length}</span>
                   </div>
 
                   <div className="public-product-grid">
@@ -338,24 +305,14 @@ export default function PublicStorePage() {
                           {product.image ? (
                             <img src={product.image} alt={product.name} className="public-product-image" />
                           ) : (
-                            <div className="public-product-placeholder">{product.category}</div>
+                            <div className="public-product-placeholder">{group.category}</div>
                           )}
-                          {product.sales > 0 ? (
-                            <span className="public-product-badge">
-                              {language === "ar" ? `${product.sales} مباعة` : `${product.sales} sold`}
-                            </span>
-                          ) : null}
                         </div>
-
                         <div className="public-product-body">
                           <span className="public-product-category">{product.category}</span>
                           <h3>{product.name}</h3>
-                          <p>{product.description}</p>
                           <div className="public-product-footer">
                             <strong>{formatCurrency(product.price)}</strong>
-                            <span className="secondary-button public-product-link-button">
-                              {language === "ar" ? "عرض المنتج" : "View product"}
-                            </span>
                           </div>
                         </div>
                       </Link>
@@ -366,28 +323,11 @@ export default function PublicStorePage() {
             </div>
           ) : (
             <div className="public-empty-state">
-              {language === "ar"
-                ? searchTerm || categoryFilter
-                  ? "لا توجد منتجات مطابقة لهذا التصفية."
-                  : "هذا المتجر لا يحتوي على منتجات منشورة بعد."
-                : searchTerm || categoryFilter
-                  ? "No products matched this filter."
-                  : "This store does not have published products yet."}
+              {isArabic ? "لا توجد منتجات مطابقة حاليًا." : "No matching products right now."}
             </div>
           )}
         </section>
       </section>
-
-      <footer className="public-store-footer">
-        <div>
-          <strong>{store.name}</strong>
-          <p>{store.address || (language === "ar" ? "فلسطين" : "Palestine")}</p>
-        </div>
-        <div className="public-store-footer-links">
-          <span>{store.contactEmail || "-"}</span>
-          <span>{store.contactPhone || "-"}</span>
-        </div>
-      </footer>
     </section>
   );
 }

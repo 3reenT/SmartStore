@@ -35,6 +35,11 @@ export default function SellerStorePage() {
     contactPhone: "",
     address: "",
     subscription: "Free",
+    socialLinks: {
+      tiktok: "",
+      facebook: "",
+      instagram: "",
+    },
   });
 
   useEffect(() => {
@@ -82,6 +87,11 @@ export default function SellerStorePage() {
       contactPhone: "",
       address: "",
       subscription: "Free",
+      socialLinks: {
+        tiktok: "",
+        facebook: "",
+        instagram: "",
+      },
     });
     setShowCreateForm(false);
     setSavedMessage(t.storeCreatedSuccessfully);
@@ -230,6 +240,66 @@ export default function SellerStorePage() {
                     required
                   />
                 </div>
+                <div>
+                  <label htmlFor="new-store-tiktok">
+                    {language === "ar" ? "رابط TikTok" : "TikTok URL"}
+                  </label>
+                  <input
+                    id="new-store-tiktok"
+                    value={createForm.socialLinks.tiktok}
+                    onChange={(event) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        socialLinks: {
+                          ...current.socialLinks,
+                          tiktok: event.target.value,
+                        },
+                      }))
+                    }
+                    placeholder="https://www.tiktok.com/@yourstore"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="new-store-facebook">
+                    {language === "ar" ? "رابط Facebook" : "Facebook URL"}
+                  </label>
+                  <input
+                    id="new-store-facebook"
+                    value={createForm.socialLinks.facebook}
+                    onChange={(event) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        socialLinks: {
+                          ...current.socialLinks,
+                          facebook: event.target.value,
+                        },
+                      }))
+                    }
+                    placeholder="https://www.facebook.com/yourstore"
+                    required
+                  />
+                </div>
+                <div className="seller-form-span">
+                  <label htmlFor="new-store-instagram">
+                    {language === "ar" ? "رابط Instagram" : "Instagram URL"}
+                  </label>
+                  <input
+                    id="new-store-instagram"
+                    value={createForm.socialLinks.instagram}
+                    onChange={(event) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        socialLinks: {
+                          ...current.socialLinks,
+                          instagram: event.target.value,
+                        },
+                      }))
+                    }
+                    placeholder="https://www.instagram.com/yourstore"
+                    required
+                  />
+                </div>
               </div>
             </section>
 
@@ -246,11 +316,17 @@ export default function SellerStorePage() {
             <article key={store.id} className="store-card">
               <div className="store-card-top">
                 <div className="store-card-brand">
-                  <img
-                    src={store.logo || "/logo.png"}
-                    alt={store.name}
-                    className="store-logo-thumb"
-                  />
+                  {store.logo ? (
+                    <img
+                      src={store.logo}
+                      alt={store.name}
+                      className="store-logo-thumb"
+                    />
+                  ) : (
+                    <div className="store-logo-thumb store-logo-empty small">
+                      {language === "ar" ? "بدون شعار" : "No logo"}
+                    </div>
+                  )}
                   <div className="stacked-cell">
                     <strong>{store.name}</strong>
                     <small>{store.description}</small>
@@ -287,16 +363,6 @@ export default function SellerStorePage() {
                   }}
                 >
                   {t.manageStore}
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => {
-                    setActiveSellerStore(currentUser.id, store.id);
-                    navigate(`/seller/store/${store.id}`);
-                  }}
-                >
-                  {t.storeSettings}
                 </button>
                 <button
                   className="secondary-button"

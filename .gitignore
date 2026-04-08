@@ -4,3 +4,6 @@ vite.err
 vite.log
 _reference_api/
 report_extracted.txt
+
+vite-dev.out.log
+vite-dev.err.log

@@ -77,7 +77,10 @@ export default function CustomerCartPage() {
               </div>
 
               {cartItems.map((item) => (
-                <div key={item.productId} className="table-row">
+                <div
+                  key={`${item.productId}-${item.size || "none"}-${item.color || "none"}`}
+                  className="table-row"
+                >
                   <div className="product-name-cell">
                     <img
                       className="product-thumb"
@@ -87,19 +90,34 @@ export default function CustomerCartPage() {
                     <div className="stacked-cell">
                       <strong>{item.product.name}</strong>
                       <small>{item.product.category}</small>
+                      {item.size || item.color ? (
+                        <small>
+                          {[item.size, item.color].filter(Boolean).join(" / ")}
+                        </small>
+                      ) : null}
                     </div>
                   </div>
                   <div className="row-actions">
                     <button
                       className="secondary-button row-action"
-                      onClick={() => updateCartQuantity(store.id, item.productId, item.quantity - 1)}
+                      onClick={() =>
+                        updateCartQuantity(store.id, item.productId, item.quantity - 1, {
+                          size: item.size,
+                          color: item.color,
+                        })
+                      }
                     >
                       -
                     </button>
                     <span>{item.quantity}</span>
                     <button
                       className="secondary-button row-action"
-                      onClick={() => updateCartQuantity(store.id, item.productId, item.quantity + 1)}
+                      onClick={() =>
+                        updateCartQuantity(store.id, item.productId, item.quantity + 1, {
+                          size: item.size,
+                          color: item.color,
+                        })
+                      }
                     >
                       +
                     </button>
@@ -107,7 +125,12 @@ export default function CustomerCartPage() {
                   <span>{formatCurrency(item.product.price * item.quantity)}</span>
                   <button
                     className="secondary-button row-action danger-button"
-                    onClick={() => removeFromCart(store.id, item.productId)}
+                    onClick={() =>
+                      removeFromCart(store.id, item.productId, {
+                        size: item.size,
+                        color: item.color,
+                      })
+                    }
                   >
                     {t.removeFromCart}
                   </button>
@@ -128,6 +151,8 @@ export default function CustomerCartPage() {
                     cartItems.map((item) => ({
                       productId: item.productId,
                       quantity: item.quantity,
+                      size: item.size,
+                      color: item.color,
                     })),
                   );
 

@@ -47,9 +47,15 @@ function createStoreDefaults(store = {}) {
     slug,
     storeUrl:
       store.storeUrl || `https://smartstore.ps/${slug || `store-${Date.now()}`}`,
-    logo: store.logo || "/logo.png",
+    logo: store.logo && store.logo !== "/logo.png" ? store.logo : "",
     banner: store.banner || "",
     galleryImages: Array.isArray(store.galleryImages) ? store.galleryImages.filter(Boolean) : [],
+    sectionLogos:
+      store.sectionLogos && typeof store.sectionLogos === "object"
+        ? Object.fromEntries(
+            Object.entries(store.sectionLogos).filter(([, value]) => Boolean(value)),
+          )
+        : {},
     theme: store.theme || "Modern",
     primaryColor: store.primaryColor || "#18c79c",
     notifications: {
@@ -71,10 +77,85 @@ function createStoreDefaults(store = {}) {
       paymentMethod: "**** **** **** 4242",
       ...(store.billing || {}),
     },
+    socialLinks: {
+      tiktok: "",
+      facebook: "",
+      instagram: "",
+      ...(store.socialLinks || {}),
+    },
   };
 }
 
 function normalizeProduct(product) {
+  const images = Array.isArray(product.images)
+    ? product.images.filter(Boolean)
+    : product.image
+      ? [product.image]
+      : [];
+  const sizeOptions = Array.isArray(product.sizeOptions)
+    ? product.sizeOptions.filter(Boolean)
+    : [];
+  const colorOptions = Array.isArray(product.colorOptions)
+    ? product.colorOptions.filter(Boolean)
+    : [];
+  const sizeInventory =
+    product.sizeInventory && typeof product.sizeInventory === "object"
+      ? Object.fromEntries(
+          Object.entries(product.sizeInventory)
+            .filter(([key]) => key)
+            .map(([key, value]) => [key, Math.max(0, Number(value || 0))]),
+        )
+      : {};
+  const colorInventory =
+    product.colorInventory && typeof product.colorInventory === "object"
+      ? Object.fromEntries(
+          Object.entries(product.colorInventory)
+            .filter(([key]) => key)
+            .map(([key, value]) => [key, Math.max(0, Number(value || 0))]),
+        )
+      : {};
+  const variantInventory =
+    product.variantInventory && typeof product.variantInventory === "object"
+      ? Object.fromEntries(
+          Object.entries(product.variantInventory)
+            .filter(([key]) => key)
+            .map(([key, value]) => [key, Math.max(0, Number(value || 0))]),
+        )
+      : {};
+  const colorImageMap =
+    product.colorImageMap && typeof product.colorImageMap === "object"
+      ? Object.fromEntries(
+          Object.entries(product.colorImageMap).filter(
+            ([key, value]) => key && value,
+          ),
+        )
+      : {};
+  const derivedSizeOptions = Object.keys(variantInventory)
+    .map((key) => key.split("|")[0] || "")
+    .filter(Boolean);
+  const derivedColorOptions = Object.keys(variantInventory)
+    .map((key) => key.split("|")[1] || "")
+    .filter(Boolean);
+  const normalizedSizeOptions = Array.from(
+    new Set([...sizeOptions, ...Object.keys(sizeInventory), ...derivedSizeOptions]),
+  );
+  const normalizedColorOptions = Array.from(
+    new Set([...colorOptions, ...Object.keys(colorInventory), ...derivedColorOptions]),
+  );
+  const hasSizes = Boolean(
+    product.hasSizes || normalizedSizeOptions.length || Object.keys(sizeInventory).length,
+  );
+  const hasColors = Boolean(
+    product.hasColors || normalizedColorOptions.length || Object.keys(colorInventory).length,
+  );
+  const computedStock = Object.keys(variantInventory).length
+    ? Object.values(variantInventory).reduce((sum, value) => sum + Number(value || 0), 0)
+    : Object.keys(sizeInventory).length
+      ? Object.values(sizeInventory).reduce((sum, value) => sum + Number(value || 0), 0)
+      : Object.keys(colorInventory).length
+        ? Object.values(colorInventory).reduce((sum, value) => sum + Number(value || 0), 0)
+        : Number(product.stock || 0);
+
   return {
     id: product.id || `product-${Date.now()}`,
     storeId: product.storeId || "",
@@ -82,12 +163,22 @@ function normalizeProduct(product) {
     category: product.category || "",
     price: Number(product.price || 0),
     originalPrice: Number(product.originalPrice || 0),
-    stock: Number(product.stock || 0),
     status: product.status || "active",
     sales: Number(product.sales || 0),
     isNew: Boolean(product.isNew),
     description: product.description || "",
-    image: product.image || "",
+    image: product.image || images[0] || "",
+    images,
+    hasSizes,
+    hasColors,
+    sizeMode: product.sizeMode === "numeric" ? "numeric" : "alpha",
+    sizeOptions: normalizedSizeOptions,
+    colorOptions: normalizedColorOptions,
+    sizeInventory,
+    colorInventory,
+    variantInventory,
+    colorImageMap,
+    stock: computedStock,
   };
 }
 
@@ -122,6 +213,8 @@ function normalizeCustomerState(customerState = {}) {
             ? value.cart.map((item) => ({
                 productId: item.productId || "",
                 quantity: Number(item.quantity || 1),
+                size: item.size || "",
+                color: item.color || "",
               }))
             : [],
         },
@@ -136,9 +229,73 @@ function normalizeCustomerWorkspace(workspace = {}) {
       ? workspace.cart.map((item) => ({
           productId: item.productId || "",
           quantity: Number(item.quantity || 1),
+          size: item.size || "",
+          color: item.color || "",
         }))
       : [],
   };
+}
+
+function getProductSelectionStock(product, selection = {}) {
+  const size = selection.size || "";
+  const color = selection.color || "";
+
+  if (product.hasSizes && product.hasColors) {
+    return Number(product.variantInventory?.[`${size}|${color}`] || 0);
+  }
+
+  if (product.hasSizes) {
+    return Number(product.sizeInventory?.[size] || 0);
+  }
+
+  if (product.hasColors) {
+    return Number(product.colorInventory?.[color] || 0);
+  }
+
+  return Number(product.stock || 0);
+}
+
+function mergeById(baseItems, incomingItems, normalizer) {
+  const merged = new Map();
+
+  baseItems.forEach((item) => {
+    const normalized = normalizer(item);
+    merged.set(normalized.id, normalized);
+  });
+
+  incomingItems.forEach((item) => {
+    const normalized = normalizer(item);
+    merged.set(normalized.id, normalized);
+  });
+
+  return [...merged.values()];
+}
+
+const FORCED_DEMO_STORE_IDS = new Set(["store-6", "store-7"]);
+const FORCED_DEMO_PRODUCT_IDS = new Set([
+  "product-6",
+  "product-7",
+  "product-8",
+  "product-9",
+]);
+
+function mergeWithForcedDemoItems(baseItems, incomingItems, normalizer, forcedIds) {
+  const merged = new Map();
+
+  incomingItems.forEach((item) => {
+    const normalized = normalizer(item);
+    merged.set(normalized.id, normalized);
+  });
+
+  baseItems.forEach((item) => {
+    const normalized = normalizer(item);
+
+    if (!merged.has(normalized.id) || forcedIds.has(normalized.id)) {
+      merged.set(normalized.id, normalized);
+    }
+  });
+
+  return [...merged.values()];
 }
 
 const seedData = {
@@ -202,6 +359,38 @@ const seedData = {
       contactPhone: "+970 598 222 333",
       address: "Nablus, Palestine",
       primaryColor: "#4f7cff",
+    }),
+    createStoreDefaults({
+      id: "store-6",
+      sellerId: "seller-1",
+      name: "Urban Wear Studio",
+      city: "Ramallah",
+      category: "Clothing",
+      description: "Modern clothing essentials with a curated streetwear look.",
+      subscription: "Pro",
+      status: "approved",
+      monthlyRevenue: 10350,
+      ownerName: "Lina Khalil",
+      contactEmail: "hello@urbanwear.ps",
+      contactPhone: "+970 597 111 444",
+      address: "Ramallah, Palestine",
+      primaryColor: "#ef4444",
+    }),
+    createStoreDefaults({
+      id: "store-7",
+      sellerId: "seller-1",
+      name: "Stride Shoes",
+      city: "Bethlehem",
+      category: "Shoes",
+      description: "Sneakers and everyday footwear with clean product presentation.",
+      subscription: "Pro",
+      status: "approved",
+      monthlyRevenue: 11840,
+      ownerName: "Lina Khalil",
+      contactEmail: "support@strideshoes.ps",
+      contactPhone: "+970 598 333 444",
+      address: "Bethlehem, Palestine",
+      primaryColor: "#0f766e",
     }),
     createStoreDefaults({
       id: "store-2",
@@ -314,6 +503,154 @@ const seedData = {
       isNew: true,
       description: "Soft matte ceramic pot for indoor plants and shelves.",
     }),
+    normalizeProduct({
+      id: "product-6",
+      storeId: "store-6",
+      name: "Classic Cotton T-Shirt",
+      category: "Clothing",
+      price: 24,
+      originalPrice: 28,
+      status: "active",
+      sales: 24,
+      isNew: true,
+      description: "Comfortable everyday t-shirt with a clean modern fit.",
+      image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80",
+        "https://images.unsplash.com/photo-1503341504253-dff4815485f1?auto=format&fit=crop&w=900&q=80",
+        "https://images.unsplash.com/photo-1583743814966-8936f37f4678?auto=format&fit=crop&w=900&q=80",
+      ],
+      hasSizes: true,
+      hasColors: true,
+      sizeMode: "alpha",
+      sizeOptions: ["S", "M", "L", "XL"],
+      colorOptions: ["White", "Black", "Red"],
+      variantInventory: {
+        "S|White": 2,
+        "M|White": 3,
+        "L|White": 2,
+        "XL|White": 1,
+        "S|Black": 1,
+        "M|Black": 2,
+        "L|Black": 2,
+        "XL|Black": 1,
+        "S|Red": 1,
+        "M|Red": 2,
+        "L|Red": 1,
+        "XL|Red": 1,
+      },
+      colorImageMap: {
+        White: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80",
+        Black: "https://images.unsplash.com/photo-1503341504253-dff4815485f1?auto=format&fit=crop&w=900&q=80",
+        Red: "https://images.unsplash.com/photo-1583743814966-8936f37f4678?auto=format&fit=crop&w=900&q=80",
+      },
+    }),
+    normalizeProduct({
+      id: "product-7",
+      storeId: "store-6",
+      name: "Oversized Beige Hoodie",
+      category: "Clothing",
+      price: 49,
+      originalPrice: 59,
+      status: "active",
+      sales: 17,
+      description: "Soft oversized hoodie for casual daily wear.",
+      image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80",
+        "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80",
+      ],
+      hasSizes: true,
+      hasColors: true,
+      sizeMode: "alpha",
+      sizeOptions: ["M", "L", "XL"],
+      colorOptions: ["Beige", "Yellow"],
+      variantInventory: {
+        "M|Beige": 2,
+        "L|Beige": 2,
+        "XL|Beige": 1,
+        "M|Yellow": 1,
+        "L|Yellow": 1,
+        "XL|Yellow": 1,
+      },
+      colorImageMap: {
+        Beige: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80",
+        Yellow: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80",
+      },
+    }),
+    normalizeProduct({
+      id: "product-8",
+      storeId: "store-7",
+      name: "Street Runner 2.0",
+      category: "Shoes",
+      price: 79,
+      originalPrice: 99,
+      status: "active",
+      sales: 21,
+      isNew: true,
+      description: "Lightweight urban sneakers built for comfort and daily movement.",
+      image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+        "https://images.unsplash.com/photo-1543508282-6319a3e2621f?auto=format&fit=crop&w=900&q=80",
+      ],
+      hasSizes: true,
+      hasColors: true,
+      sizeMode: "numeric",
+      sizeOptions: ["40", "41", "42", "43", "44"],
+      colorOptions: ["Red", "Black"],
+      variantInventory: {
+        "40|Red": 1,
+        "41|Red": 1,
+        "42|Red": 2,
+        "43|Red": 1,
+        "44|Red": 1,
+        "40|Black": 1,
+        "41|Black": 1,
+        "42|Black": 1,
+        "43|Black": 1,
+        "44|Black": 1,
+      },
+      colorImageMap: {
+        Red: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+        Black: "https://images.unsplash.com/photo-1543508282-6319a3e2621f?auto=format&fit=crop&w=900&q=80",
+      },
+    }),
+    normalizeProduct({
+      id: "product-9",
+      storeId: "store-7",
+      name: "Minimal Leather Loafers",
+      category: "Shoes",
+      price: 95,
+      originalPrice: 120,
+      status: "active",
+      sales: 13,
+      description: "Clean loafers suitable for work and smart casual outfits.",
+      image: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=900&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=900&q=80",
+        "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=900&q=80",
+      ],
+      hasSizes: true,
+      hasColors: true,
+      sizeMode: "numeric",
+      sizeOptions: ["41", "42", "43", "44"],
+      colorOptions: ["Brown", "Black"],
+      variantInventory: {
+        "41|Brown": 1,
+        "42|Brown": 2,
+        "43|Brown": 1,
+        "44|Brown": 1,
+        "41|Black": 1,
+        "42|Black": 1,
+        "43|Black": 1,
+        "44|Black": 0,
+      },
+      colorImageMap: {
+        Brown: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=900&q=80",
+        Black: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=900&q=80",
+      },
+    }),
   ],
   orders: [
     normalizeOrder({
@@ -380,6 +717,8 @@ const seedData = {
   storePreferences: {
     "store-1": { lowStockThreshold: 5 },
     "store-5": { lowStockThreshold: 4 },
+    "store-6": { lowStockThreshold: 3 },
+    "store-7": { lowStockThreshold: 3 },
   },
   sellerWorkspace: {
     "seller-1": {
@@ -410,15 +749,23 @@ function loadState() {
     return {
       ...seedData,
       ...parsed,
-      stores: (parsed.stores || seedData.stores)
-        .filter((store) => store && typeof store === "object")
-        .map(createStoreDefaults),
-      products: (parsed.products || seedData.products)
-        .filter((product) => product && typeof product === "object")
-        .map(normalizeProduct),
-      orders: (parsed.orders || seedData.orders)
-        .filter((order) => order && typeof order === "object")
-        .map(normalizeOrder),
+      stores: mergeWithForcedDemoItems(
+        seedData.stores,
+        (parsed.stores || []).filter((store) => store && typeof store === "object"),
+        createStoreDefaults,
+        FORCED_DEMO_STORE_IDS,
+      ),
+      products: mergeWithForcedDemoItems(
+        seedData.products,
+        (parsed.products || []).filter((product) => product && typeof product === "object"),
+        normalizeProduct,
+        FORCED_DEMO_PRODUCT_IDS,
+      ),
+      orders: mergeById(
+        seedData.orders,
+        (parsed.orders || []).filter((order) => order && typeof order === "object"),
+        normalizeOrder,
+      ),
       storePreferences: {
         ...seedData.storePreferences,
         ...(parsed.storePreferences || {}),
@@ -582,17 +929,42 @@ export function AppProvider({ children }) {
     });
   };
 
-  const addToCart = (storeId, productId, quantity = 1) => {
+  const addToCart = (storeId, productId, quantity = 1, selection = {}) => {
     const customer = getStoreCustomer(storeId);
 
     if (!customer) {
       return { success: false, message: "Login required." };
     }
 
+    const product = state.products.find(
+      (item) => item.id === productId && item.storeId === storeId,
+    );
+
+    if (!product) {
+      return { success: false, message: "Product not found." };
+    }
+
+    if (product.hasSizes && !selection.size) {
+      return { success: false, message: "Size selection required." };
+    }
+
+    if (product.hasColors && !selection.color) {
+      return { success: false, message: "Color selection required." };
+    }
+
+    if (getProductSelectionStock(product, selection) < Number(quantity || 1)) {
+      return { success: false, message: "Not enough stock." };
+    }
+
     setState((current) => {
       const customerScopes = normalizeCustomerState(current.customerState[customer.id]);
       const customerWorkspace = normalizeCustomerWorkspace(customerScopes[storeId]);
-      const existingItem = customerWorkspace.cart.find((item) => item.productId === productId);
+      const existingItem = customerWorkspace.cart.find(
+        (item) =>
+          item.productId === productId &&
+          item.size === (selection.size || "") &&
+          item.color === (selection.color || ""),
+      );
 
       return {
         ...current,
@@ -603,8 +975,23 @@ export function AppProvider({ children }) {
             [storeId]: {
               ...customerWorkspace,
               cart: existingItem
-                ? customerWorkspace.cart
-                : [...customerWorkspace.cart, { productId, quantity: Math.max(1, Number(quantity || 1)) }],
+                ? customerWorkspace.cart.map((item) =>
+                    item === existingItem
+                      ? {
+                          ...item,
+                          quantity: item.quantity + Math.max(1, Number(quantity || 1)),
+                        }
+                      : item,
+                  )
+                : [
+                    ...customerWorkspace.cart,
+                    {
+                      productId,
+                      quantity: Math.max(1, Number(quantity || 1)),
+                      size: selection.size || "",
+                      color: selection.color || "",
+                    },
+                  ],
             },
           },
         },
@@ -614,7 +1001,7 @@ export function AppProvider({ children }) {
     return { success: true };
   };
 
-  const updateCartQuantity = (storeId, productId, quantity) => {
+  const updateCartQuantity = (storeId, productId, quantity, selection = {}) => {
     const customer = getStoreCustomer(storeId);
 
     if (!customer) {
@@ -636,7 +1023,9 @@ export function AppProvider({ children }) {
             [storeId]: {
               ...customerWorkspace,
               cart: customerWorkspace.cart.map((item) =>
-                item.productId === productId
+                item.productId === productId &&
+                item.size === (selection.size || "") &&
+                item.color === (selection.color || "")
                   ? { ...item, quantity: normalizedQuantity }
                   : item,
               ),
@@ -647,7 +1036,7 @@ export function AppProvider({ children }) {
     });
   };
 
-  const removeFromCart = (storeId, productId) => {
+  const removeFromCart = (storeId, productId, selection = {}) => {
     const customer = getStoreCustomer(storeId);
 
     if (!customer) {
@@ -666,7 +1055,14 @@ export function AppProvider({ children }) {
             ...customerScopes,
             [storeId]: {
               ...customerWorkspace,
-              cart: customerWorkspace.cart.filter((item) => item.productId !== productId),
+              cart: customerWorkspace.cart.filter(
+                (item) =>
+                  !(
+                    item.productId === productId &&
+                    item.size === (selection.size || "") &&
+                    item.color === (selection.color || "")
+                  ),
+              ),
             },
           },
         },
@@ -693,6 +1089,17 @@ export function AppProvider({ children }) {
         }
 
         const quantity = Number(item.quantity || 1);
+        const selection = {
+          size: item.size || "",
+          color: item.color || "",
+        };
+        const availableStock = getProductSelectionStock(product, selection);
+
+        if (!availableStock) {
+          return;
+        }
+
+        const appliedQuantity = Math.min(quantity, availableStock);
         const store = current.stores.find((entry) => entry.id === product.storeId);
         const group = groupedByStore.get(product.storeId) || {
           storeId: product.storeId,
@@ -701,12 +1108,41 @@ export function AppProvider({ children }) {
           total: 0,
         };
 
-        group.itemsCount += quantity;
-        group.total += product.price * quantity;
+        group.itemsCount += appliedQuantity;
+        group.total += product.price * appliedQuantity;
         groupedByStore.set(product.storeId, group);
 
-        product.stock = Math.max(0, product.stock - quantity);
-        product.sales += quantity;
+        if (product.hasSizes && product.hasColors) {
+          const key = `${selection.size}|${selection.color}`;
+          product.variantInventory = {
+            ...product.variantInventory,
+            [key]: Math.max(
+              0,
+              Number(product.variantInventory?.[key] || 0) - appliedQuantity,
+            ),
+          };
+        } else if (product.hasSizes) {
+          product.sizeInventory = {
+            ...product.sizeInventory,
+            [selection.size]: Math.max(
+              0,
+              Number(product.sizeInventory?.[selection.size] || 0) - appliedQuantity,
+            ),
+          };
+        } else if (product.hasColors) {
+          product.colorInventory = {
+            ...product.colorInventory,
+            [selection.color]: Math.max(
+              0,
+              Number(product.colorInventory?.[selection.color] || 0) - appliedQuantity,
+            ),
+          };
+        } else {
+          product.stock = Math.max(0, product.stock - appliedQuantity);
+        }
+
+        product.stock = normalizeProduct(product).stock;
+        product.sales += appliedQuantity;
       });
 
       groupedByStore.forEach((group) => {
@@ -728,7 +1164,12 @@ export function AppProvider({ children }) {
 
       const customerScopes = normalizeCustomerState(current.customerState[customer.id]);
       const customerWorkspace = normalizeCustomerWorkspace(customerScopes[storeId]);
-      const purchasedIds = new Set(items.map((item) => item.productId));
+      const purchasedIds = new Set(
+        items.map(
+          (item) =>
+            `${item.productId}::${item.size || ""}::${item.color || ""}`,
+        ),
+      );
 
       return {
         ...current,
@@ -740,7 +1181,12 @@ export function AppProvider({ children }) {
             ...customerScopes,
             [storeId]: {
               ...customerWorkspace,
-              cart: customerWorkspace.cart.filter((item) => !purchasedIds.has(item.productId)),
+              cart: customerWorkspace.cart.filter(
+                (item) =>
+                  !purchasedIds.has(
+                    `${item.productId}::${item.size || ""}::${item.color || ""}`,
+                  ),
+              ),
             },
           },
         },
@@ -750,8 +1196,15 @@ export function AppProvider({ children }) {
     return { success: true };
   };
 
-  const buyNow = (storeId, productId, quantity = 1) =>
-    checkoutProducts(storeId, [{ productId, quantity: Number(quantity || 1) }]);
+  const buyNow = (storeId, productId, quantity = 1, selection = {}) =>
+    checkoutProducts(storeId, [
+      {
+        productId,
+        quantity: Number(quantity || 1),
+        size: selection.size || "",
+        color: selection.color || "",
+      },
+    ]);
 
   const addUser = (payload) => {
     setState((current) => ({

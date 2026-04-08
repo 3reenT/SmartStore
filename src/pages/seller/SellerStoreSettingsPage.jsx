@@ -29,25 +29,43 @@ function createDraft(store) {
     storeUrl: store.storeUrl || "",
     theme: store.theme || "Modern",
     primaryColor: store.primaryColor || "#18c79c",
-    logo: store.logo || "/logo.png",
+    logo: store.logo && store.logo !== "/logo.png" ? store.logo : "",
     banner: store.banner || "",
     galleryImages: Array.isArray(store.galleryImages) ? store.galleryImages : [],
+    sectionLogos:
+      store.sectionLogos && typeof store.sectionLogos === "object"
+        ? { ...store.sectionLogos }
+        : {},
     notifications: { ...store.notifications },
     security: { ...store.security },
     billing: { ...store.billing },
+    socialLinks: {
+      tiktok: store.socialLinks?.tiktok || "",
+      facebook: store.socialLinks?.facebook || "",
+      instagram: store.socialLinks?.instagram || "",
+    },
     subscription: store.subscription || "Free",
   };
 }
 
 export default function SellerStoreSettingsPage() {
   const { storeId } = useParams();
-  const { currentUser, stores, updateStore, setActiveSellerStore, language } = useApp();
+  const { currentUser, stores, products, updateStore, setActiveSellerStore, language } = useApp();
   const t = translations[language];
   const sellerStores = stores.filter((store) => store.sellerId === currentUser?.id);
   const store = sellerStores.find((item) => item.id === storeId) || null;
   const [savedMessage, setSavedMessage] = useState("");
   const [activeTab, setActiveTab] = useState("general");
   const [draft, setDraft] = useState(() => (store ? createDraft(store) : null));
+  const [saveError, setSaveError] = useState("");
+  const storeCategories = Array.from(
+    new Set(
+      products
+        .filter((product) => product.storeId === store?.id)
+        .map((product) => product.category)
+        .filter(Boolean),
+    ),
+  );
 
   useEffect(() => {
     if (store) {
@@ -69,6 +87,15 @@ export default function SellerStoreSettingsPage() {
     const timeout = window.setTimeout(() => setSavedMessage(""), 2200);
     return () => window.clearTimeout(timeout);
   }, [savedMessage]);
+
+  useEffect(() => {
+    if (!saveError) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => setSaveError(""), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [saveError]);
 
   if (!store) {
     return <Navigate to="/seller/store" replace />;
@@ -101,6 +128,33 @@ export default function SellerStoreSettingsPage() {
     setDraft((current) => ({ ...current, [field]: value }));
   };
 
+  const handleSectionLogoChange = async (section, file) => {
+    if (!file) {
+      return;
+    }
+
+    const value = await readFileAsDataUrl(file);
+    setDraft((current) => ({
+      ...current,
+      sectionLogos: {
+        ...current.sectionLogos,
+        [section]: value,
+      },
+    }));
+  };
+
+  const removeSectionLogo = (section) => {
+    setDraft((current) => {
+      const nextSectionLogos = { ...current.sectionLogos };
+      delete nextSectionLogos[section];
+
+      return {
+        ...current,
+        sectionLogos: nextSectionLogos,
+      };
+    });
+  };
+
   const handleGalleryUpload = async (files) => {
     const selectedFiles = Array.from(files || []).slice(0, 6);
 
@@ -124,11 +178,25 @@ export default function SellerStoreSettingsPage() {
   };
 
   const saveCurrentStore = () => {
+    if (
+      !draft.socialLinks.tiktok.trim() ||
+      !draft.socialLinks.facebook.trim() ||
+      !draft.socialLinks.instagram.trim()
+    ) {
+      setSaveError(
+        language === "ar"
+          ? "روابط TikTok وFacebook وInstagram إجبارية لكل متجر."
+          : "TikTok, Facebook, and Instagram links are required for every store.",
+      );
+      return;
+    }
+
     updateStore(store.id, {
       ...draft,
       sellerId: currentUser.id,
       ownerName: currentUser.name,
     });
+    setSaveError("");
     setSavedMessage(t.savedToStore);
   };
 
@@ -140,6 +208,7 @@ export default function SellerStoreSettingsPage() {
           <p className="settings-subtitle">{t.selectedStore}</p>
         </div>
         <div className="panel-tools">
+          {saveError ? <span className="form-error">{saveError}</span> : null}
           {savedMessage ? <span>{savedMessage}</span> : null}
           <Link className="secondary-button" to="/seller/store">
             {t.myStores}
@@ -258,6 +327,59 @@ export default function SellerStoreSettingsPage() {
                   </button>
                 </div>
               </div>
+              <div className="seller-form-span">
+                <label>{language === "ar" ? "روابط السوشال ميديا" : "Social media links"}</label>
+                <div className="admin-form-grid seller-form-grid">
+                  <div>
+                    <label>{language === "ar" ? "رابط TikTok" : "TikTok URL"}</label>
+                    <input
+                      value={draft.socialLinks.tiktok}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          socialLinks: {
+                            ...current.socialLinks,
+                            tiktok: event.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="https://www.tiktok.com/@yourstore"
+                    />
+                  </div>
+                  <div>
+                    <label>{language === "ar" ? "رابط Facebook" : "Facebook URL"}</label>
+                    <input
+                      value={draft.socialLinks.facebook}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          socialLinks: {
+                            ...current.socialLinks,
+                            facebook: event.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="https://www.facebook.com/yourstore"
+                    />
+                  </div>
+                  <div className="seller-form-span">
+                    <label>{language === "ar" ? "رابط Instagram" : "Instagram URL"}</label>
+                    <input
+                      value={draft.socialLinks.instagram}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          socialLinks: {
+                            ...current.socialLinks,
+                            instagram: event.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="https://www.instagram.com/yourstore"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
         </div>
@@ -305,7 +427,13 @@ export default function SellerStoreSettingsPage() {
               <div>
                 <label>{t.storeLogo}</label>
                 <div className="asset-upload-box">
-                  <img src={draft.logo || "/logo.png"} alt={t.storeLogo} className="store-logo-preview" />
+                  {draft.logo ? (
+                    <img src={draft.logo} alt={t.storeLogo} className="store-logo-preview" />
+                  ) : (
+                    <div className="store-logo-preview store-logo-empty">
+                      {language === "ar" ? "بدون شعار" : "No logo"}
+                    </div>
+                  )}
                   <label className="secondary-button upload-trigger">
                     {t.uploadLogo}
                     <input
@@ -315,6 +443,15 @@ export default function SellerStoreSettingsPage() {
                       onChange={(event) => handleAssetChange("logo", event.target.files?.[0])}
                     />
                   </label>
+                  {draft.logo ? (
+                    <button
+                      type="button"
+                      className="secondary-button danger-button"
+                      onClick={() => setDraft((current) => ({ ...current, logo: "" }))}
+                    >
+                      {language === "ar" ? "حذف الشعار" : "Remove logo"}
+                    </button>
+                  ) : null}
                 </div>
               </div>
               <div className="seller-form-span">
@@ -375,6 +512,49 @@ export default function SellerStoreSettingsPage() {
                     ))}
                   </div>
                 ) : null}
+              </div>
+              <div className="seller-form-span">
+                <label>{language === "ar" ? "شعارات أقسام المتجر" : "Store section logos"}</label>
+                <p className="helper-text">
+                  {language === "ar"
+                    ? "ارفع صورة لكل قسم، وإذا لم ترفع صورة سيبقى القسم بدون لوجو."
+                    : "Upload a logo for each section. If you skip it, the section stays without a logo."}
+                </p>
+                <div className="store-gallery-editor">
+                  {[
+                    language === "ar" ? "الرئيسية" : "Home",
+                    ...storeCategories,
+                  ].map((section) => (
+                    <div key={section} className="store-gallery-editor-card section-logo-card">
+                      {draft.sectionLogos?.[section] ? (
+                        <img src={draft.sectionLogos[section]} alt={section} />
+                      ) : (
+                        <div className="store-logo-preview store-logo-empty small">
+                          {language === "ar" ? "بدون لوجو" : "No logo"}
+                        </div>
+                      )}
+                      <strong>{section}</strong>
+                      <label className="secondary-button upload-trigger">
+                        {language === "ar" ? "رفع الصورة" : "Upload image"}
+                        <input
+                          type="file"
+                          className="hidden-file-input"
+                          accept="image/*"
+                          onChange={(event) => handleSectionLogoChange(section, event.target.files?.[0])}
+                        />
+                      </label>
+                      {draft.sectionLogos?.[section] ? (
+                        <button
+                          type="button"
+                          className="secondary-button danger-button"
+                          onClick={() => removeSectionLogo(section)}
+                        >
+                          {language === "ar" ? "حذف" : "Remove"}
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </section>

@@ -90,12 +90,44 @@ function UserIcon() {
   );
 }
 
+function TikTokIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M14 3c.3 2 1.5 3.7 3.7 4.5v2.5a8 8 0 0 1-3.7-1.1v5.7a5 5 0 1 1-5-5h.4v2.6H9a2.4 2.4 0 1 0 2.4 2.4V3H14Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M13.5 21v-7h2.3l.4-3h-2.7V9.1c0-.9.3-1.6 1.6-1.6H16V4.8c-.3 0-1-.1-1.9-.1-1.9 0-3.2 1.1-3.2 3.4V11H8.5v3H11v7h2.5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function InstagramIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="4.5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" />
+    </svg>
+  );
+}
+
 function StoreBrand({ store }) {
   if (store.logo) {
     return <img src={store.logo} alt={store.name} className="storefront-brand-logo" />;
   }
 
-  return <div className="storefront-brand-fallback">{String(store.name || "S").slice(0, 2)}</div>;
+  return <div className="storefront-brand-fallback storefront-brand-empty" />;
 }
 
 function getInitials(name) {
@@ -122,6 +154,7 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
     from: `${location.pathname}${location.search}${location.hash}`,
     storeId: store.id,
   };
+  const socialLinks = store.socialLinks || {};
 
   return (
     <section className="storefront-topbar">
@@ -136,9 +169,34 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
         </button>
 
         <div className="storefront-socials">
-          <span>t</span>
-          <span>f</span>
-          <span>ig</span>
+          {socialLinks.tiktok ? (
+            <a href={socialLinks.tiktok} target="_blank" rel="noreferrer" aria-label="TikTok">
+              <TikTokIcon />
+            </a>
+          ) : (
+            <span className="storefront-social-disabled" aria-label="TikTok">
+              <TikTokIcon />
+            </span>
+          )}
+          {socialLinks.facebook ? (
+            <a href={socialLinks.facebook} target="_blank" rel="noreferrer" aria-label="Facebook">
+              <FacebookIcon />
+            </a>
+          ) : null}
+          {!socialLinks.facebook ? (
+            <span className="storefront-social-disabled" aria-label="Facebook">
+              <FacebookIcon />
+            </span>
+          ) : null}
+          {socialLinks.instagram ? (
+            <a href={socialLinks.instagram} target="_blank" rel="noreferrer" aria-label="Instagram">
+              <InstagramIcon />
+            </a>
+          ) : (
+            <span className="storefront-social-disabled" aria-label="Instagram">
+              <InstagramIcon />
+            </span>
+          )}
         </div>
       </div>
 
