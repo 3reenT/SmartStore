@@ -3,7 +3,7 @@ import { useApp } from "../../state/AppContext";
 import { translations } from "../../i18n";
 
 export default function SellerLayout() {
-  const { language, currentUser, stores, sellerWorkspace, setActiveSellerStore } = useApp();
+  const { language, currentUser, stores, sellerWorkspace } = useApp();
   const t = translations[language];
   const sellerStores = stores.filter((store) => store.sellerId === currentUser?.id);
   const activeStoreId = sellerWorkspace[currentUser?.id]?.activeStoreId;
@@ -32,24 +32,9 @@ export default function SellerLayout() {
             <span className="eyebrow">{t.commerceOperations}</span>
             <h1>{t.sellerCommandCenter}</h1>
           </div>
-          <div className="section-heading-card seller-heading-card seller-heading-select">
+          <div className="section-heading-card seller-heading-card">
             <span>{currentUser?.name}</span>
             <strong>{activeStore?.name || t.createStoreToContinue}</strong>
-            {sellerStores.length ? (
-              <select
-                className="seller-store-switcher"
-                value={activeStore?.id || ""}
-                onChange={(event) =>
-                  setActiveSellerStore(currentUser.id, event.target.value)
-                }
-              >
-                {sellerStores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
-            ) : null}
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useApp } from "../../state/AppContext";
 import { translations } from "../../i18n";
 
@@ -26,9 +26,6 @@ export default function SellerOverviewPage() {
   const activeStoreId = sellerWorkspace[currentUser?.id]?.activeStoreId;
   const activeStore =
     sellerStores.find((store) => store.id === activeStoreId) || sellerStores[0] || null;
-  const sellerStoreIds = sellerStores.map((store) => store.id);
-  const sellerProducts = products.filter((product) => sellerStoreIds.includes(product.storeId));
-  const sellerOrders = orders.filter((order) => sellerStoreIds.includes(order.storeId));
   const activeProducts = products.filter((product) => product.storeId === activeStore?.id);
   const activeOrders = orders.filter((order) => order.storeId === activeStore?.id);
   const activeThreshold = storePreferences[activeStore?.id]?.lowStockThreshold ?? 5;
@@ -38,15 +35,65 @@ export default function SellerOverviewPage() {
   const pendingOrders = activeOrders.filter(
     (order) => order.status === "pending" || order.status === "processing",
   );
-  const paidOrders = sellerOrders.filter((order) => order.paymentStatus === "paid");
+  const paidOrders = activeOrders.filter((order) => order.paymentStatus === "paid");
   const liveRevenue = paidOrders.reduce((sum, order) => sum + order.total, 0);
-  const totalMonthlyRevenue = sellerStores.reduce(
-    (sum, store) => sum + store.monthlyRevenue,
-    0,
-  );
-  const averageOrderValue = sellerOrders.length
-    ? Math.round(liveRevenue / sellerOrders.length)
+  const averageOrderValue = activeOrders.length
+    ? Math.round(liveRevenue / activeOrders.length)
     : 0;
+  const [orderRange, setOrderRange] = useState("weekly");
+
+  const orderRangeLabel = (value) => {
+    if (language === "ar") {
+      return value === "daily"
+        ? "يومي"
+        : value === "weekly"
+          ? "أسبوعي"
+          : value === "monthly"
+            ? "شهري"
+            : "سنوي";
+    }
+
+    return value === "daily"
+      ? "Daily"
+      : value === "weekly"
+        ? "Weekly"
+        : value === "monthly"
+          ? "Monthly"
+          : "Yearly";
+  };
+
+  const orderRangeCounts = useMemo(() => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const last7DaysStart = new Date(startOfDay);
+    last7DaysStart.setDate(last7DaysStart.getDate() - 6);
+
+    return {
+      daily: activeOrders.filter((order) => {
+        const orderDate = new Date(order.createdAt);
+        return Number.isFinite(orderDate.getTime()) && orderDate >= startOfDay;
+      }).length,
+      weekly: activeOrders.filter((order) => {
+        const orderDate = new Date(order.createdAt);
+        return Number.isFinite(orderDate.getTime()) && orderDate >= last7DaysStart;
+      }).length,
+      monthly: activeOrders.filter((order) => {
+        const orderDate = new Date(order.createdAt);
+        return (
+          Number.isFinite(orderDate.getTime()) &&
+          orderDate.getFullYear() === now.getFullYear() &&
+          orderDate.getMonth() === now.getMonth()
+        );
+      }).length,
+      yearly: activeOrders.filter((order) => {
+        const orderDate = new Date(order.createdAt);
+        return (
+          Number.isFinite(orderDate.getTime()) &&
+          orderDate.getFullYear() === now.getFullYear()
+        );
+      }).length,
+    };
+  }, [activeOrders]);
 
   const topProducts = useMemo(
     () => [...activeProducts].sort((a, b) => b.sales - a.sales).slice(0, 3),
@@ -56,38 +103,38 @@ export default function SellerOverviewPage() {
   const stats = [
     {
       label: t.myStores,
-      value: sellerStores.length,
+      value: 1,
       tone: "blue",
       badge: "STR",
-      helper: language === "ar" ? "إجمالي متاجرك داخل المنصة" : "Total stores in your workspace",
+      helper: language === "ar" ? "هذا المتجر فقط" : "Current store only",
     },
     {
       label: t.liveRevenue,
       value: formatCurrency(liveRevenue),
       tone: "teal",
       badge: "REV",
-      helper: language === "ar" ? "من الطلبات المدفوعة عبر جميع المتاجر" : "From paid orders across all stores",
+      helper: language === "ar" ? "من الطلبات المدفوعة لهذا المتجر" : "From paid orders in this store",
     },
     {
       label: t.pendingOrders,
       value: pendingOrders.length,
       tone: "amber",
       badge: "ORD",
-      helper: language === "ar" ? "للمتجر النشط حاليًا" : "For the currently selected store",
+      helper: language === "ar" ? "طلبات هذا المتجر" : "Orders for this store",
     },
     {
       label: t.lowStockItems,
       value: lowStockProducts.length,
       tone: "violet",
       badge: "STK",
-      helper: language === "ar" ? "بحسب حد التنبيه للمتجر النشط" : "Based on the active store threshold",
+      helper: language === "ar" ? "حسب حد التنبيه لهذا المتجر" : "Based on this store threshold",
     },
     {
       label: t.averageOrderValue,
       value: formatCurrency(averageOrderValue),
       tone: "green",
       badge: "AOV",
-      helper: language === "ar" ? "متوسط قيمة الطلب عبر متاجرك" : "Average order value across your stores",
+      helper: language === "ar" ? "متوسط قيمة الطلب لهذا المتجر" : "Average order value for this store",
     },
   ];
 
@@ -105,6 +152,35 @@ export default function SellerOverviewPage() {
   return (
     <div className="dashboard-stack">
       <section className="stats-grid stats-grid-admin">
+        <article className="stat-card overview-stat-card tone-rose">
+          <div className="overview-stat-top">
+            <span className="overview-stat-badge">ORD</span>
+            <span className="overview-stat-dot" aria-hidden="true" />
+          </div>
+          <span className="overview-stat-label">
+            {language === "ar" ? "عدد الطلبات" : "Order count"}
+          </span>
+          <strong className="overview-stat-value">
+            {orderRangeCounts[orderRange]}
+          </strong>
+          <div className="order-range-toggle">
+            {["daily", "weekly", "monthly", "yearly"].map((range) => (
+              <button
+                key={range}
+                type="button"
+                className={
+                  range === orderRange
+                    ? "order-range-button active"
+                    : "order-range-button"
+                }
+                onClick={() => setOrderRange(range)}
+              >
+                {orderRangeLabel(range)}
+              </button>
+            ))}
+          </div>
+        </article>
+
         {stats.map((item) => (
           <article
             key={item.label}
@@ -209,7 +285,7 @@ export default function SellerOverviewPage() {
         <article className="panel">
           <div className="panel-header">
             <h2>{t.storeHealth}</h2>
-            <span>{formatCurrency(totalMonthlyRevenue)} {t.revenue}</span>
+            <span>{formatCurrency(activeStore.monthlyRevenue)} {t.revenue}</span>
           </div>
 
           <div className="seller-analytics-stack">

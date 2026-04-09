@@ -20,6 +20,9 @@ export default function SellerOrdersPage() {
     sellerStores.find((store) => store.id === activeStoreId) || sellerStores[0] || null;
   const sellerOrders = orders.filter((order) => order.storeId === sellerStore?.id);
   const [savedMessage, setSavedMessage] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [deliveryFilter, setDeliveryFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
 
   useEffect(() => {
     if (!savedMessage) {
@@ -29,6 +32,14 @@ export default function SellerOrdersPage() {
     const timeout = window.setTimeout(() => setSavedMessage(""), 2200);
     return () => window.clearTimeout(timeout);
   }, [savedMessage]);
+
+  const filteredOrders = sellerOrders.filter((order) => {
+    const matchesStatus = statusFilter === "all" ? true : order.status === statusFilter;
+    const matchesDelivery = deliveryFilter === "all" ? true : order.deliveryStatus === deliveryFilter;
+    const matchesPayment = paymentFilter === "all" ? true : order.paymentStatus === paymentFilter;
+
+    return matchesStatus && matchesDelivery && matchesPayment;
+  });
 
   if (!sellerStore) {
     return (
@@ -45,7 +56,30 @@ export default function SellerOrdersPage() {
     <section className="panel">
       <div className="panel-header">
         <h2>{t.orderManagement}</h2>
-        {savedMessage ? <span>{savedMessage}</span> : <span>{sellerOrders.length} {t.orders}</span>}
+        {savedMessage ? <span>{savedMessage}</span> : <span>{filteredOrders.length} {t.orders}</span>}
+      </div>
+
+      <div className="orders-filter-row">
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <option value="all">{t.filterByStatus}: {t.all}</option>
+          <option value="pending">{t.pending}</option>
+          <option value="processing">{t.processing}</option>
+          <option value="delivered">{t.delivered}</option>
+          <option value="cancelled">{t.cancelled}</option>
+        </select>
+
+        <select value={deliveryFilter} onChange={(event) => setDeliveryFilter(event.target.value)}>
+          <option value="all">{t.filterByDelivery}: {t.all}</option>
+          <option value="awaiting pickup">{t.awaitingPickup}</option>
+          <option value="ready">{t.ready}</option>
+          <option value="delivered">{t.delivered}</option>
+        </select>
+
+        <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
+          <option value="all">{t.filterByPayment}: {t.all}</option>
+          <option value="pending">{t.pending}</option>
+          <option value="paid">{t.paid}</option>
+        </select>
       </div>
 
       <div className="table-like">
@@ -59,7 +93,7 @@ export default function SellerOrdersPage() {
           <span>{t.actions}</span>
         </div>
 
-        {sellerOrders.map((order) => (
+        {filteredOrders.map((order) => (
           <div key={order.id} className="table-row seller-orders-grid">
             <div className="stacked-cell">
               <strong>{order.id}</strong>

@@ -150,6 +150,7 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
   const isCustomer = Boolean(storeCustomer);
   const cartCount = storeWorkspace.cart.length;
   const favoriteCount = storeWorkspace.favorites.length;
+  const isArabic = language === "ar";
   const loginState = {
     from: `${location.pathname}${location.search}${location.hash}`,
     storeId: store.id,
@@ -162,10 +163,10 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
         <button
           type="button"
           className="storefront-language"
-          onClick={() => setLanguage(language === "ar" ? "en" : "ar")}
+          onClick={() => setLanguage(isArabic ? "en" : "ar")}
         >
           <span className="storefront-language-arrow">⌄</span>
-          <span>{language === "ar" ? "Arabic" : "English"}</span>
+          <span>{isArabic ? "Arabic" : "English"}</span>
         </button>
 
         <div className="storefront-socials">
@@ -178,16 +179,17 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
               <TikTokIcon />
             </span>
           )}
+
           {socialLinks.facebook ? (
             <a href={socialLinks.facebook} target="_blank" rel="noreferrer" aria-label="Facebook">
               <FacebookIcon />
             </a>
-          ) : null}
-          {!socialLinks.facebook ? (
+          ) : (
             <span className="storefront-social-disabled" aria-label="Facebook">
               <FacebookIcon />
             </span>
-          ) : null}
+          )}
+
           {socialLinks.instagram ? (
             <a href={socialLinks.instagram} target="_blank" rel="noreferrer" aria-label="Instagram">
               <InstagramIcon />
@@ -228,7 +230,7 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
                 : "storefront-utility-link plain storefront-logout-button"
             }
             onClick={() => setSearchOpen((current) => !current)}
-            title={language === "ar" ? "بحث داخل المتجر" : "Search store products"}
+            title={isArabic ? "بحث داخل المتجر" : "Search store products"}
           >
             <SearchIcon />
           </button>
@@ -241,7 +243,7 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
                 : "storefront-utility-link plain storefront-logout-button"
             }
             onClick={() => setAccountOpen((current) => !current)}
-            title={language === "ar" ? "الحساب" : "Account"}
+            title={isArabic ? "الحساب" : "Account"}
           >
             <UserIcon />
           </button>
@@ -250,11 +252,11 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
         <div className="storefront-branding">
           <nav className="storefront-nav">
             <Link to={`/store/${store.slug || store.id}`}>
-              {language === "ar" ? "الصفحة الرئيسية" : "Home"}
+              {isArabic ? "الصفحة الرئيسية" : "Home"}
             </Link>
-            <a href="#store-products">{language === "ar" ? "اخر المنتجات" : "Latest products"}</a>
+            <a href="#store-products">{isArabic ? "آخر المنتجات" : "Latest products"}</a>
             <a href="#store-products">
-              {store.category || (language === "ar" ? "التصنيفات" : "Categories")}
+              {store.category || (isArabic ? "التصنيفات" : "Categories")}
             </a>
           </nav>
 
@@ -274,13 +276,13 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
               </div>
 
               <div className="storefront-account-copy">
-                <strong>{language === "ar" ? "حسابي" : "My account"}</strong>
+                <strong>{isArabic ? "حسابي" : "My account"}</strong>
                 <span>
                   {isCustomer
-                    ? language === "ar"
+                    ? isArabic
                       ? `مسجل داخل ${store.name}`
                       : `Signed in to ${store.name}`
-                    : language === "ar"
+                    : isArabic
                       ? `غير مسجل داخل ${store.name}`
                       : `Not signed in to ${store.name}`}
                 </span>
@@ -290,11 +292,11 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
             {isCustomer ? (
               <div className="storefront-account-body">
                 <div className="storefront-account-row">
-                  <span>{language === "ar" ? "الاسم" : "Name"}</span>
+                  <span>{isArabic ? "الاسم" : "Name"}</span>
                   <strong>{storeCustomer.name}</strong>
                 </div>
                 <div className="storefront-account-row">
-                  <span>{language === "ar" ? "البريد" : "Email"}</span>
+                  <span>{isArabic ? "البريد" : "Email"}</span>
                   <strong>{storeCustomer.email}</strong>
                 </div>
                 <button
@@ -305,13 +307,13 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
                     setAccountOpen(false);
                   }}
                 >
-                  {language === "ar" ? "تسجيل الخروج" : "Sign out"}
+                  {isArabic ? "تسجيل الخروج" : "Sign out"}
                 </button>
               </div>
             ) : (
               <div className="storefront-account-body">
                 <p className="storefront-account-note">
-                  {language === "ar"
+                  {isArabic
                     ? "سجل دخولك لهذا المتجر لتتمكن من استخدام السلة والمفضلة وإتمام الطلب."
                     : "Sign in to this store to use cart, favorites, and checkout."}
                 </p>
@@ -321,7 +323,7 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
                   state={loginState}
                   onClick={() => setAccountOpen(false)}
                 >
-                  {language === "ar" ? "تسجيل الدخول" : "Sign in"}
+                  {isArabic ? "تسجيل الدخول" : "Sign in"}
                 </Link>
               </div>
             )}
@@ -333,9 +335,9 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
         <div className="storefront-account-panel-wrap">
           <div className="storefront-account-panel storefront-search-panel">
             <div className="storefront-account-copy">
-              <strong>{language === "ar" ? "ابحث في منتجات المتجر" : "Search store products"}</strong>
+              <strong>{isArabic ? "ابحث في منتجات المتجر" : "Search store products"}</strong>
               <span>
-                {language === "ar"
+                {isArabic
                   ? "اكتب اسم المنتج أو التصنيف ثم اضغط Enter."
                   : "Type a product or category name and press Enter."}
               </span>
@@ -357,10 +359,10 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
                 type="search"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
-                placeholder={language === "ar" ? "ابحث عن منتج..." : "Search for a product..."}
+                placeholder={isArabic ? "ابحث عن منتج..." : "Search for a product..."}
               />
               <button type="submit" className="storefront-account-action">
-                {language === "ar" ? "بحث" : "Search"}
+                {isArabic ? "بحث" : "Search"}
               </button>
             </form>
           </div>

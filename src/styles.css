@@ -413,6 +413,10 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.product-dimensions-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .variant-matrix-table {
   border-collapse: collapse;
   width: 100%;
@@ -1113,6 +1117,35 @@ textarea {
   margin-top: auto;
 }
 
+.order-range-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+}
+
+.order-range-button {
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #f7f3ee;
+  color: #2b1d12;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.order-range-button:hover {
+  border-color: rgba(15, 23, 42, 0.25);
+}
+
+.order-range-button.active {
+  background: #123c3a;
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 8px 16px -12px rgba(18, 60, 58, 0.7);
+}
+
 .tone-blue {
   background:
     radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 32%),
@@ -1132,6 +1165,13 @@ textarea {
     radial-gradient(circle at top right, rgba(217, 119, 6, 0.13), transparent 32%),
     rgba(255, 253, 249, 0.96);
   color: #d97706;
+}
+
+.tone-rose {
+  background:
+    radial-gradient(circle at top right, rgba(225, 29, 72, 0.14), transparent 32%),
+    rgba(255, 253, 249, 0.96);
+  color: #e11d48;
 }
 
 .tone-violet {
@@ -1646,6 +1686,13 @@ textarea {
   grid-template-columns: 1fr 1.1fr 0.7fr 0.8fr 1fr 0.8fr 1fr;
 }
 
+.orders-filter-row {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 240px));
+  margin-bottom: 18px;
+}
+
 .seller-inventory-grid {
   align-items: center;
   grid-template-columns: 1.3fr 0.5fr 0.7fr 0.8fr 0.8fr;
@@ -1661,7 +1708,10 @@ textarea {
 }
 
 .danger-button {
+  background: rgba(180, 35, 24, 0.08);
+  border-color: rgba(180, 35, 24, 0.24);
   color: var(--danger);
+  font-weight: 800;
 }
 
 .inventory-threshold-card {
@@ -1720,57 +1770,189 @@ textarea {
   padding: 48px;
 }
 
-.phone-mock {
-  background: linear-gradient(180deg, #232323, #0e0e0e);
-  border: 3px solid rgba(255, 255, 255, 0.2);
-  border-radius: 44px;
-  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.3);
-  height: 520px;
-  padding: 18px;
+.storefront-stage {
+  min-height: 560px;
+  position: relative;
+  width: min(100%, 760px);
+}
+
+.storefront-stage-glow {
+  border: 2px solid rgba(255, 255, 255, 0.46);
+  border-radius: 999px;
+  filter: drop-shadow(0 0 18px rgba(255, 240, 220, 0.55));
+  height: 260px;
+  position: absolute;
+  top: 10px;
   width: 260px;
 }
 
-.phone-notch {
-  background: #050505;
-  border-radius: 999px;
-  height: 18px;
-  margin: 0 auto 14px;
-  width: 88px;
+.storefront-stage-glow.left {
+  animation: stageOrbitLeft 7s ease-in-out infinite;
+  inset-inline-start: 18px;
 }
 
-.phone-screen {
+.storefront-stage-glow.right {
+  animation: stageOrbitRight 7s ease-in-out infinite;
+  inset-inline-end: 18px;
+}
+
+.storefront-stage-shell {
+  align-content: start;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(245, 239, 231, 0.65)),
-    linear-gradient(180deg, #faf5ee, #ebe1d1);
-  border-radius: 28px;
+    linear-gradient(180deg, rgba(20, 27, 37, 0.9), rgba(17, 22, 31, 0.96)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 34px;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   display: grid;
-  gap: 12px;
-  height: calc(100% - 32px);
-  padding: 16px;
+  gap: 22px;
+  overflow: hidden;
+  padding: 28px;
+  position: relative;
+  top: 62px;
 }
 
-.screen-card,
-.screen-strip {
-  background: rgba(255, 255, 255, 0.84);
-  border-radius: 18px;
-}
-
-.screen-card.large {
-  height: 220px;
-}
-
-.screen-row {
+.storefront-stage-topbar {
+  color: rgba(255, 255, 255, 0.82);
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
 }
 
-.screen-row .screen-card {
-  height: 92px;
+.storefront-stage-logo {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 20px;
+  color: #163450;
+  font-size: 1.15rem;
+  font-weight: 900;
+  padding: 12px 20px;
 }
 
-.screen-strip {
-  height: 64px;
+.storefront-stage-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.storefront-stage-card {
+  align-content: end;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.24), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(223, 226, 232, 0.82));
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 24px;
+  box-shadow: 0 14px 28px rgba(4, 8, 16, 0.24);
+  display: grid;
+  gap: 8px;
+  min-height: 170px;
+  padding: 18px;
+  position: relative;
+  transform: translateY(0);
+}
+
+.storefront-stage-card::before {
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.94);
+  content: attr(data-label);
+  font-size: 0.78rem;
+  font-weight: 800;
+  inset-block-start: 16px;
+  inset-inline-start: 16px;
+  letter-spacing: 0.08em;
+  padding: 6px 10px;
+  position: absolute;
+  text-transform: uppercase;
+}
+
+.storefront-stage-card strong {
+  color: #1a1e27;
+  font-size: 1.4rem;
+  letter-spacing: -0.03em;
+}
+
+.storefront-stage-card span {
+  color: #4d5561;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.storefront-stage-card.home::before,
+.storefront-stage-card.green::before {
+  background: #4f8f64;
+}
+
+.storefront-stage-card.tech::before {
+  background: #3f7cad;
+}
+
+.storefront-stage-card.sport::before {
+  background: #8d5fd0;
+}
+
+.storefront-stage-card.fashion::before {
+  background: #9f594d;
+}
+
+.storefront-stage-card.featured {
+  background:
+    radial-gradient(circle at top left, rgba(113, 230, 255, 0.35), transparent 36%),
+    linear-gradient(180deg, rgba(60, 87, 119, 0.96), rgba(28, 45, 69, 0.96));
+  border-color: rgba(110, 215, 255, 0.5);
+  min-height: 190px;
+}
+
+.storefront-stage-card.featured::before {
+  background: #0f766e;
+}
+
+.storefront-stage-card.featured strong,
+.storefront-stage-card.featured span {
+  color: white;
+}
+
+.storefront-stage-card.home,
+.storefront-stage-card.tech,
+.storefront-stage-card.sport,
+.storefront-stage-card.fashion,
+.storefront-stage-card.green {
+  animation: stageCardFloat 5s ease-in-out infinite;
+}
+
+.storefront-stage-card.tech {
+  animation-delay: 0.6s;
+}
+
+.storefront-stage-card.sport {
+  animation-delay: 1.2s;
+}
+
+.storefront-stage-card.fashion {
+  animation-delay: 1.8s;
+}
+
+.storefront-stage-card.green {
+  animation-delay: 2.4s;
+}
+
+@keyframes stageCardFloat {
+  0%,
+  100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes stageOrbitLeft {
+  0%,
+  100% { transform: rotate(0deg) scale(1); opacity: 0.78; }
+  50% { transform: rotate(8deg) scale(1.04); opacity: 1; }
+}
+
+@keyframes stageOrbitRight {
+  0%,
+  100% { transform: rotate(0deg) scale(1); opacity: 0.78; }
+  50% { transform: rotate(-8deg) scale(1.04); opacity: 1; }
 }
 
 .guest-hero-copy {
@@ -2750,6 +2932,27 @@ textarea {
   letter-spacing: -0.03em;
 }
 
+.product-dimensions-inline {
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
+.product-discount-timer-inline {
+  color: #c2410c;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.product-old-price-inline {
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.92rem;
+  text-decoration: line-through;
+}
+
 .public-empty-state {
   background: rgba(255, 255, 255, 0.72);
   border: 1px dashed rgba(220, 205, 185, 0.92);
@@ -2936,6 +3139,18 @@ textarea {
   color: var(--muted);
   line-height: 1.9;
   margin: 0;
+}
+
+.public-product-discount-timer {
+  align-self: flex-start;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.22);
+  border-radius: 999px;
+  color: #c2410c;
+  display: inline-flex;
+  font-size: 0.95rem;
+  font-weight: 800;
+  padding: 10px 14px;
 }
 
 .public-product-quantity-row {
@@ -3586,6 +3801,12 @@ textarea {
   }
 
   .inventory-threshold-card {
+    grid-template-columns: 1fr;
+  }
+
+  .orders-filter-row,
+  .storefront-stage-grid,
+  .product-dimensions-grid {
     grid-template-columns: 1fr;
   }
 

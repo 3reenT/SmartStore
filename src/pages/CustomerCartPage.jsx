@@ -2,6 +2,7 @@ import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useApp } from "../state/AppContext";
 import { translations } from "../i18n";
 import StorefrontTopBar from "../components/StorefrontTopBar";
+import defaultLogoUrl from "../assets/defaultLogo";
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("en-US", {
@@ -22,6 +23,7 @@ export default function CustomerCartPage() {
     updateCartQuantity,
     removeFromCart,
     checkoutProducts,
+    getEffectiveProductPrice,
   } = useApp();
   const navigate = useNavigate();
   const t = translations[language];
@@ -52,7 +54,10 @@ export default function CustomerCartPage() {
       ),
     }))
     .filter((item) => item.product);
-  const total = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const total = cartItems.reduce(
+    (sum, item) => sum + getEffectiveProductPrice(item.product) * item.quantity,
+    0,
+  );
 
   return (
     <section className="public-store-page">
@@ -78,21 +83,21 @@ export default function CustomerCartPage() {
 
               {cartItems.map((item) => (
                 <div
-                  key={`${item.productId}-${item.size || "none"}-${item.color || "none"}`}
+                  key={`${item.productId}-${item.size || "none"}-${item.color || "none"}-${item.dimension || "none"}`}
                   className="table-row"
                 >
                   <div className="product-name-cell">
                     <img
                       className="product-thumb"
-                      src={item.product.image || "/logo.png"}
+                      src={item.product.image || defaultLogoUrl}
                       alt={item.product.name}
                     />
                     <div className="stacked-cell">
                       <strong>{item.product.name}</strong>
                       <small>{item.product.category}</small>
-                      {item.size || item.color ? (
+                      {item.size || item.color || item.dimension ? (
                         <small>
-                          {[item.size, item.color].filter(Boolean).join(" / ")}
+                          {[item.size, item.color, item.dimension].filter(Boolean).join(" / ")}
                         </small>
                       ) : null}
                     </div>
@@ -104,6 +109,7 @@ export default function CustomerCartPage() {
                         updateCartQuantity(store.id, item.productId, item.quantity - 1, {
                           size: item.size,
                           color: item.color,
+                          dimension: item.dimension,
                         })
                       }
                     >
@@ -116,19 +122,21 @@ export default function CustomerCartPage() {
                         updateCartQuantity(store.id, item.productId, item.quantity + 1, {
                           size: item.size,
                           color: item.color,
+                          dimension: item.dimension,
                         })
                       }
                     >
                       +
                     </button>
                   </div>
-                  <span>{formatCurrency(item.product.price * item.quantity)}</span>
+                  <span>{formatCurrency(getEffectiveProductPrice(item.product) * item.quantity)}</span>
                   <button
                     className="secondary-button row-action danger-button"
                     onClick={() =>
                       removeFromCart(store.id, item.productId, {
                         size: item.size,
                         color: item.color,
+                        dimension: item.dimension,
                       })
                     }
                   >
@@ -153,6 +161,7 @@ export default function CustomerCartPage() {
                       quantity: item.quantity,
                       size: item.size,
                       color: item.color,
+                      dimension: item.dimension,
                     })),
                   );
 

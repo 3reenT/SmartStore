@@ -11,7 +11,7 @@ function formatCurrency(value) {
   }).format(Number(value || 0));
 }
 
-function getSelectionStock(product, size, color) {
+function getSelectionStock(product, size, color, dimension) {
   if (product.hasSizes && product.hasColors) {
     return Number(product.variantInventory?.[`${size}|${color}`] || 0);
   }
@@ -24,7 +24,37 @@ function getSelectionStock(product, size, color) {
     return Number(product.colorInventory?.[color] || 0);
   }
 
+  if (product.hasDimensions) {
+    return Number(product.dimensionInventory?.[dimension] || 0);
+  }
+
   return Number(product.stock || 0);
+}
+
+function formatRemainingDiscountTime(value, isArabic) {
+  if (!value) {
+    return "";
+  }
+
+  const remainingMs = new Date(value).getTime() - Date.now();
+
+  if (remainingMs <= 0) {
+    return "";
+  }
+
+  const totalHours = Math.floor(remainingMs / (1000 * 60 * 60));
+  const totalDays = Math.floor(totalHours / 24);
+
+  if (totalDays >= 1) {
+    return isArabic ? `${totalDays} يوم` : `${totalDays} day${totalDays > 1 ? "s" : ""}`;
+  }
+
+  if (totalHours >= 1) {
+    return isArabic ? `${totalHours} ساعة` : `${totalHours} hour${totalHours > 1 ? "s" : ""}`;
+  }
+
+  const minutes = Math.max(1, Math.floor(remainingMs / (1000 * 60)));
+  return isArabic ? `${minutes} دقيقة` : `${minutes} min`;
 }
 
 export default function PublicProductPage() {
@@ -41,18 +71,24 @@ export default function PublicProductPage() {
     toggleFavorite,
     addToCart,
     buyNow,
+    getEffectiveProductPrice,
+    getEffectiveProductOriginalPrice,
+    getEffectiveProductDiscountPercent,
+    isDiscountCurrentlyActive,
   } = useApp();
   const isArabic = language === "ar";
   const store = stores.find((item) => item.slug === slug || item.id === slug) || null;
   const product = products.find((item) => item.id === productId) || null;
-  const productImages = Array.isArray(product?.images) && product.images.length
-    ? product.images
-    : product?.image
-      ? [product.image]
-      : [];
+  const productImages =
+    Array.isArray(product?.images) && product.images.length
+      ? product.images
+      : product?.image
+        ? [product.image]
+        : [];
   const [activeImage, setActiveImage] = useState(productImages[0] || "");
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
+  const [selectedDimension, setSelectedDimension] = useState("");
   const [selectionError, setSelectionError] = useState("");
 
   useEffect(() => {
@@ -72,8 +108,22 @@ export default function PublicProductPage() {
       setSelectedColor("");
     }
 
+    if (product?.hasDimensions) {
+      setSelectedDimension(product.dimensionOptions?.[0] || "");
+    } else {
+      setSelectedDimension("");
+    }
+
     setSelectionError("");
-  }, [productId, product?.hasSizes, product?.hasColors, product?.sizeOptions, product?.colorOptions]);
+  }, [
+    productId,
+    product?.hasSizes,
+    product?.hasColors,
+    product?.hasDimensions,
+    product?.sizeOptions,
+    product?.colorOptions,
+    product?.dimensionOptions,
+  ]);
 
   useEffect(() => {
     if (!product?.hasColors || !selectedColor) {
@@ -88,33 +138,37 @@ export default function PublicProductPage() {
     if (mappedImage) {
       setActiveImage(mappedImage);
     }
-  }, [product, selectedColor]);
+  }, [product, selectedColor, productImages]);
+
+  const canPreviewUnapproved =
+    currentUser?.role === "admin" ||
+    (currentUser?.role === "seller" && currentUser.id === store?.sellerId);
+
+  const relatedProducts = useMemo(
+    () =>
+      store && product
+        ? products
+            .filter((item) => item.storeId === store.id && item.id !== product.id)
+            .slice(0, 4)
+        : [],
+    [products, store, product],
+  );
 
   if (!store || !product || product.storeId !== store.id) {
     return <Navigate to="/" replace />;
   }
 
-  const canPreviewUnapproved =
-    currentUser?.role === "admin" ||
-    (currentUser?.role === "seller" && currentUser.id === store.sellerId);
-
   if (store.status !== "approved" && !canPreviewUnapproved) {
     return <Navigate to="/" replace />;
   }
 
-  const relatedProducts = useMemo(
-    () =>
-      products
-        .filter((item) => item.storeId === store.id && item.id !== product.id)
-        .slice(0, 4),
-    [products, store.id, product.id],
-  );
-
-  const originalPrice = Number(product.originalPrice || 0);
-  const discount =
-    originalPrice > product.price
-      ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
-      : 0;
+  const currentPrice = getEffectiveProductPrice(product);
+  const originalPrice = getEffectiveProductOriginalPrice(product);
+  const discount = getEffectiveProductDiscountPercent(product);
+  const temporaryDiscountRemaining =
+    product.discountType === "temporary" && isDiscountCurrentlyActive(product)
+      ? formatRemainingDiscountTime(product.discountEndsAt, isArabic)
+      : "";
   const storeCustomer = getStoreCustomer(store.id);
   const isCustomer = Boolean(storeCustomer);
   const storeWorkspace = getStoreCustomerWorkspace(store.id);
@@ -123,7 +177,12 @@ export default function PublicProductPage() {
     from: `${location.pathname}${location.search}${location.hash}`,
     storeId: store.id,
   };
-  const currentStock = getSelectionStock(product, selectedSize, selectedColor);
+  const currentStock = getSelectionStock(
+    product,
+    selectedSize,
+    selectedColor,
+    selectedDimension,
+  );
 
   const requireCustomer = (callback) => {
     if (isCustomer) {
@@ -145,6 +204,11 @@ export default function PublicProductPage() {
       return false;
     }
 
+    if (product.hasDimensions && !selectedDimension) {
+      setSelectionError(isArabic ? "اختر البُعد أولًا." : "Select a dimension first.");
+      return false;
+    }
+
     if (!currentStock) {
       setSelectionError(isArabic ? "هذا الخيار غير متوفر حاليًا." : "This option is currently unavailable.");
       return false;
@@ -163,6 +227,7 @@ export default function PublicProductPage() {
       addToCart(store.id, product.id, 1, {
         size: selectedSize,
         color: selectedColor,
+        dimension: selectedDimension,
       }),
     );
   };
@@ -176,6 +241,7 @@ export default function PublicProductPage() {
       buyNow(store.id, product.id, 1, {
         size: selectedSize,
         color: selectedColor,
+        dimension: selectedDimension,
       }),
     );
   };
@@ -227,9 +293,17 @@ export default function PublicProductPage() {
           <h1>{product.name}</h1>
 
           <div className="public-product-pricing">
-            <span className="current-price">{formatCurrency(product.price)}</span>
+            <span className="current-price">{formatCurrency(currentPrice)}</span>
             {discount > 0 ? <span className="old-price">{formatCurrency(originalPrice)}</span> : null}
           </div>
+
+          {temporaryDiscountRemaining ? (
+            <div className="public-product-discount-timer">
+              {isArabic
+                ? `متبقي على الخصم: ${temporaryDiscountRemaining}`
+                : `Discount ends in: ${temporaryDiscountRemaining}`}
+            </div>
+          ) : null}
 
           <div className="public-product-top-actions">
             <button
@@ -253,6 +327,16 @@ export default function PublicProductPage() {
             <span>
               {isArabic ? "المخزون" : "Stock"}: {currentStock}
             </span>
+            {product.hasDimensions && selectedDimension ? (
+              <span>
+                {isArabic ? "البُعد المختار" : "Selected dimension"}: {selectedDimension}
+              </span>
+            ) : null}
+            {product.hasDimensions && product.dimensionOptions?.length ? (
+              <span>
+                {isArabic ? "الأبعاد" : "Dimensions"}: {product.dimensionOptions.join(" • ")}
+              </span>
+            ) : null}
           </div>
 
           {product.hasSizes ? (
@@ -291,6 +375,27 @@ export default function PublicProductPage() {
                     }}
                   >
                     {color}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {product.hasDimensions ? (
+            <div className="public-product-option-group">
+              <h3>{isArabic ? "اختر البُعد" : "Choose dimension"}</h3>
+              <div className="public-product-option-list">
+                {product.dimensionOptions.map((dimension) => (
+                  <button
+                    key={dimension}
+                    type="button"
+                    className={`public-option-chip${selectedDimension === dimension ? " active" : ""}`}
+                    onClick={() => {
+                      setSelectedDimension(dimension);
+                      setSelectionError("");
+                    }}
+                  >
+                    {dimension}
                   </button>
                 ))}
               </div>
@@ -361,7 +466,7 @@ export default function PublicProductPage() {
                 <span className="public-product-category">{item.category}</span>
                 <h3>{item.name}</h3>
                 <div className="public-product-footer">
-                  <strong>{formatCurrency(item.price)}</strong>
+                  <strong>{formatCurrency(getEffectiveProductPrice(item))}</strong>
                 </div>
               </div>
             </Link>

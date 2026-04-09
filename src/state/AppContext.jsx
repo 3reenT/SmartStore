@@ -47,7 +47,7 @@ function createStoreDefaults(store = {}) {
     slug,
     storeUrl:
       store.storeUrl || `https://smartstore.ps/${slug || `store-${Date.now()}`}`,
-    logo: store.logo && store.logo !== "/logo.png" ? store.logo : "",
+    logo: store.logo || "",
     banner: store.banner || "",
     galleryImages: Array.isArray(store.galleryImages) ? store.galleryImages.filter(Boolean) : [],
     sectionLogos:
@@ -98,6 +98,9 @@ function normalizeProduct(product) {
   const colorOptions = Array.isArray(product.colorOptions)
     ? product.colorOptions.filter(Boolean)
     : [];
+  const dimensionOptions = Array.isArray(product.dimensionOptions)
+    ? product.dimensionOptions.filter(Boolean)
+    : [];
   const sizeInventory =
     product.sizeInventory && typeof product.sizeInventory === "object"
       ? Object.fromEntries(
@@ -122,6 +125,14 @@ function normalizeProduct(product) {
             .map(([key, value]) => [key, Math.max(0, Number(value || 0))]),
         )
       : {};
+  const dimensionInventory =
+    product.dimensionInventory && typeof product.dimensionInventory === "object"
+      ? Object.fromEntries(
+          Object.entries(product.dimensionInventory)
+            .filter(([key]) => key)
+            .map(([key, value]) => [key, Math.max(0, Number(value || 0))]),
+        )
+      : {};
   const colorImageMap =
     product.colorImageMap && typeof product.colorImageMap === "object"
       ? Object.fromEntries(
@@ -136,11 +147,25 @@ function normalizeProduct(product) {
   const derivedColorOptions = Object.keys(variantInventory)
     .map((key) => key.split("|")[1] || "")
     .filter(Boolean);
+  const derivedDimensionOptions = Object.keys(dimensionInventory).filter(Boolean);
+  const derivedDimensionLabel =
+    product.dimensions && (product.dimensions.length || product.dimensions.width)
+      ? `${product.dimensions.length || ""}x${product.dimensions.width || ""}${
+          product.dimensions.height ? `x${product.dimensions.height}` : ""
+        } ${product.dimensions.unit || "cm"}`
+      : "";
   const normalizedSizeOptions = Array.from(
     new Set([...sizeOptions, ...Object.keys(sizeInventory), ...derivedSizeOptions]),
   );
   const normalizedColorOptions = Array.from(
     new Set([...colorOptions, ...Object.keys(colorInventory), ...derivedColorOptions]),
+  );
+  const normalizedDimensionOptions = Array.from(
+    new Set([
+      ...dimensionOptions,
+      ...derivedDimensionOptions,
+      ...(derivedDimensionLabel ? [derivedDimensionLabel] : []),
+    ]),
   );
   const hasSizes = Boolean(
     product.hasSizes || normalizedSizeOptions.length || Object.keys(sizeInventory).length,
@@ -148,13 +173,22 @@ function normalizeProduct(product) {
   const hasColors = Boolean(
     product.hasColors || normalizedColorOptions.length || Object.keys(colorInventory).length,
   );
+  const hasDimensions = Boolean(
+    product.hasDimensions ||
+      normalizedDimensionOptions.length ||
+      Object.keys(dimensionInventory).length ||
+      (product.dimensions &&
+        (product.dimensions.length || product.dimensions.width || product.dimensions.height)),
+  );
   const computedStock = Object.keys(variantInventory).length
     ? Object.values(variantInventory).reduce((sum, value) => sum + Number(value || 0), 0)
     : Object.keys(sizeInventory).length
       ? Object.values(sizeInventory).reduce((sum, value) => sum + Number(value || 0), 0)
       : Object.keys(colorInventory).length
         ? Object.values(colorInventory).reduce((sum, value) => sum + Number(value || 0), 0)
-        : Number(product.stock || 0);
+        : Object.keys(dimensionInventory).length
+          ? Object.values(dimensionInventory).reduce((sum, value) => sum + Number(value || 0), 0)
+          : Number(product.stock || 0);
 
   return {
     id: product.id || `product-${Date.now()}`,
@@ -162,7 +196,12 @@ function normalizeProduct(product) {
     name: product.name || "",
     category: product.category || "",
     price: Number(product.price || 0),
+    costPrice: Number(product.costPrice || 0),
     originalPrice: Number(product.originalPrice || 0),
+    discountType:
+      product.discountType ||
+      (Number(product.originalPrice || 0) > Number(product.price || 0) ? "permanent" : "none"),
+    discountEndsAt: product.discountEndsAt || "",
     status: product.status || "active",
     sales: Number(product.sales || 0),
     isNew: Boolean(product.isNew),
@@ -171,9 +210,26 @@ function normalizeProduct(product) {
     images,
     hasSizes,
     hasColors,
+    hasDimensions,
     sizeMode: product.sizeMode === "numeric" ? "numeric" : "alpha",
     sizeOptions: normalizedSizeOptions,
     colorOptions: normalizedColorOptions,
+    dimensionOptions: normalizedDimensionOptions,
+    dimensions:
+      product.dimensions && typeof product.dimensions === "object"
+        ? {
+            length: product.dimensions.length || "",
+            width: product.dimensions.width || "",
+            height: product.dimensions.height || "",
+            unit: product.dimensions.unit || "cm",
+          }
+        : {
+            length: "",
+            width: "",
+            height: "",
+            unit: "cm",
+          },
+    dimensionInventory,
     sizeInventory,
     colorInventory,
     variantInventory,
@@ -215,6 +271,7 @@ function normalizeCustomerState(customerState = {}) {
                 quantity: Number(item.quantity || 1),
                 size: item.size || "",
                 color: item.color || "",
+                dimension: item.dimension || "",
               }))
             : [],
         },
@@ -231,6 +288,7 @@ function normalizeCustomerWorkspace(workspace = {}) {
           quantity: Number(item.quantity || 1),
           size: item.size || "",
           color: item.color || "",
+          dimension: item.dimension || "",
         }))
       : [],
   };
@@ -239,6 +297,7 @@ function normalizeCustomerWorkspace(workspace = {}) {
 function getProductSelectionStock(product, selection = {}) {
   const size = selection.size || "";
   const color = selection.color || "";
+  const dimension = selection.dimension || "";
 
   if (product.hasSizes && product.hasColors) {
     return Number(product.variantInventory?.[`${size}|${color}`] || 0);
@@ -252,7 +311,63 @@ function getProductSelectionStock(product, selection = {}) {
     return Number(product.colorInventory?.[color] || 0);
   }
 
+  if (product.hasDimensions) {
+    return Number(product.dimensionInventory?.[dimension] || 0);
+  }
+
   return Number(product.stock || 0);
+}
+
+function isDiscountCurrentlyActive(product, now = Date.now()) {
+  const currentPrice = Number(product?.price || 0);
+  const originalPrice = Number(product?.originalPrice || 0);
+
+  if (!(originalPrice > currentPrice)) {
+    return false;
+  }
+
+  if (product?.discountType === "temporary") {
+    if (!product?.discountEndsAt) {
+      return false;
+    }
+
+    const endsAt = new Date(product.discountEndsAt).getTime();
+    return Number.isFinite(endsAt) && endsAt > now;
+  }
+
+  return product?.discountType === "permanent";
+}
+
+function getEffectiveProductPrice(product, now = Date.now()) {
+  const currentPrice = Number(product?.price || 0);
+  const originalPrice = Number(product?.originalPrice || 0);
+
+  if (isDiscountCurrentlyActive(product, now)) {
+    return currentPrice;
+  }
+
+  if (product?.discountType === "temporary" && originalPrice > 0) {
+    return originalPrice;
+  }
+
+  return currentPrice;
+}
+
+function getEffectiveProductOriginalPrice(product, now = Date.now()) {
+  return isDiscountCurrentlyActive(product, now)
+    ? Number(product?.originalPrice || 0)
+    : 0;
+}
+
+function getEffectiveProductDiscountPercent(product, now = Date.now()) {
+  const originalPrice = getEffectiveProductOriginalPrice(product, now);
+  const currentPrice = getEffectiveProductPrice(product, now);
+
+  if (!(originalPrice > currentPrice)) {
+    return 0;
+  }
+
+  return Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
 }
 
 function mergeById(baseItems, incomingItems, normalizer) {
@@ -963,7 +1078,8 @@ export function AppProvider({ children }) {
         (item) =>
           item.productId === productId &&
           item.size === (selection.size || "") &&
-          item.color === (selection.color || ""),
+          item.color === (selection.color || "") &&
+          item.dimension === (selection.dimension || ""),
       );
 
       return {
@@ -975,14 +1091,7 @@ export function AppProvider({ children }) {
             [storeId]: {
               ...customerWorkspace,
               cart: existingItem
-                ? customerWorkspace.cart.map((item) =>
-                    item === existingItem
-                      ? {
-                          ...item,
-                          quantity: item.quantity + Math.max(1, Number(quantity || 1)),
-                        }
-                      : item,
-                  )
+                ? customerWorkspace.cart
                 : [
                     ...customerWorkspace.cart,
                     {
@@ -990,6 +1099,7 @@ export function AppProvider({ children }) {
                       quantity: Math.max(1, Number(quantity || 1)),
                       size: selection.size || "",
                       color: selection.color || "",
+                      dimension: selection.dimension || "",
                     },
                   ],
             },
@@ -1025,7 +1135,8 @@ export function AppProvider({ children }) {
               cart: customerWorkspace.cart.map((item) =>
                 item.productId === productId &&
                 item.size === (selection.size || "") &&
-                item.color === (selection.color || "")
+                item.color === (selection.color || "") &&
+                item.dimension === (selection.dimension || "")
                   ? { ...item, quantity: normalizedQuantity }
                   : item,
               ),
@@ -1060,7 +1171,8 @@ export function AppProvider({ children }) {
                   !(
                     item.productId === productId &&
                     item.size === (selection.size || "") &&
-                    item.color === (selection.color || "")
+                    item.color === (selection.color || "") &&
+                    item.dimension === (selection.dimension || "")
                   ),
               ),
             },
@@ -1092,6 +1204,7 @@ export function AppProvider({ children }) {
         const selection = {
           size: item.size || "",
           color: item.color || "",
+          dimension: item.dimension || "",
         };
         const availableStock = getProductSelectionStock(product, selection);
 
@@ -1109,7 +1222,7 @@ export function AppProvider({ children }) {
         };
 
         group.itemsCount += appliedQuantity;
-        group.total += product.price * appliedQuantity;
+        group.total += getEffectiveProductPrice(product) * appliedQuantity;
         groupedByStore.set(product.storeId, group);
 
         if (product.hasSizes && product.hasColors) {
@@ -1135,6 +1248,14 @@ export function AppProvider({ children }) {
             [selection.color]: Math.max(
               0,
               Number(product.colorInventory?.[selection.color] || 0) - appliedQuantity,
+            ),
+          };
+        } else if (product.hasDimensions) {
+          product.dimensionInventory = {
+            ...product.dimensionInventory,
+            [selection.dimension]: Math.max(
+              0,
+              Number(product.dimensionInventory?.[selection.dimension] || 0) - appliedQuantity,
             ),
           };
         } else {
@@ -1167,7 +1288,7 @@ export function AppProvider({ children }) {
       const purchasedIds = new Set(
         items.map(
           (item) =>
-            `${item.productId}::${item.size || ""}::${item.color || ""}`,
+            `${item.productId}::${item.size || ""}::${item.color || ""}::${item.dimension || ""}`,
         ),
       );
 
@@ -1184,7 +1305,7 @@ export function AppProvider({ children }) {
               cart: customerWorkspace.cart.filter(
                 (item) =>
                   !purchasedIds.has(
-                    `${item.productId}::${item.size || ""}::${item.color || ""}`,
+                    `${item.productId}::${item.size || ""}::${item.color || ""}::${item.dimension || ""}`,
                   ),
               ),
             },
@@ -1203,6 +1324,7 @@ export function AppProvider({ children }) {
         quantity: Number(quantity || 1),
         size: selection.size || "",
         color: selection.color || "",
+        dimension: selection.dimension || "",
       },
     ]);
 
@@ -1632,6 +1754,10 @@ export function AppProvider({ children }) {
       removeFromCart,
       checkoutProducts,
       buyNow,
+      getEffectiveProductPrice,
+      getEffectiveProductOriginalPrice,
+      getEffectiveProductDiscountPercent,
+      isDiscountCurrentlyActive,
       addProduct,
       updateProduct,
       deleteProduct,

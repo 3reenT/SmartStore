@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../../state/AppContext";
 import { translations } from "../../i18n";
+import defaultLogoUrl from "../../assets/defaultLogo";
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("en-US", {
@@ -14,7 +15,10 @@ const initialForm = {
   name: "",
   category: "",
   price: "",
+  costPrice: "",
   originalPrice: "",
+  discountType: "none",
+  discountEndsAt: "",
   stock: "",
   status: "active",
   isNew: false,
@@ -24,6 +28,15 @@ const initialForm = {
   hasSizes: false,
   sizeMode: "alpha",
   sizeOptions: [],
+  hasDimensions: false,
+  dimensions: {
+    length: "",
+    width: "",
+    height: "",
+    unit: "cm",
+  },
+  dimensionOptions: [],
+  dimensionInventory: {},
   hasColors: false,
   colorOptions: [],
   sizeInventory: {},
@@ -83,6 +96,12 @@ export default function SellerProductsPage() {
   const [form, setForm] = useState(initialForm);
   const [sizeDraft, setSizeDraft] = useState("");
   const [colorDraft, setColorDraft] = useState("");
+  const [dimensionDraft, setDimensionDraft] = useState({
+    length: "",
+    width: "",
+    height: "",
+    unit: "cm",
+  });
 
   const computedStock = useMemo(() => {
     if (form.hasSizes && form.hasColors) {
@@ -95,6 +114,10 @@ export default function SellerProductsPage() {
 
     if (form.hasColors) {
       return sumInventory(form.colorInventory);
+    }
+
+    if (form.hasDimensions) {
+      return sumInventory(form.dimensionInventory);
     }
 
     return Number(form.stock || 0);
@@ -115,6 +138,18 @@ export default function SellerProductsPage() {
     setForm((current) => ({
       ...current,
       [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleDimensionChange = (event) => {
+    const { name, value } = event.target;
+
+    setForm((current) => ({
+      ...current,
+      dimensions: {
+        ...current.dimensions,
+        [name]: value,
+      },
     }));
   };
 
@@ -216,6 +251,57 @@ export default function SellerProductsPage() {
     setColorDraft("");
   };
 
+  const buildDimensionLabel = (draft) => {
+    const length = String(draft.length || "").trim();
+    const width = String(draft.width || "").trim();
+    const height = String(draft.height || "").trim();
+    const unit = String(draft.unit || "cm").trim();
+
+    if (!length || !width) {
+      return "";
+    }
+
+    return height ? `${length}x${width}x${height} ${unit}` : `${length}x${width} ${unit}`;
+  };
+
+  const buildDimensionLabelFromProduct = (product) =>
+    buildDimensionLabel({
+      length: product?.dimensions?.length || "",
+      width: product?.dimensions?.width || "",
+      height: product?.dimensions?.height || "",
+      unit: product?.dimensions?.unit || "cm",
+    });
+
+  const addDimensionOption = () => {
+    const label = buildDimensionLabel(dimensionDraft);
+
+    if (!label) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      dimensionOptions: current.dimensionOptions.includes(label)
+        ? current.dimensionOptions
+        : [...current.dimensionOptions, label],
+    }));
+    setDimensionDraft({ length: "", width: "", height: "", unit: dimensionDraft.unit || "cm" });
+  };
+
+  const removeDimensionOption = (label) => {
+    setForm((current) => {
+      const nextOptions = current.dimensionOptions.filter((option) => option !== label);
+      const nextInventory = { ...current.dimensionInventory };
+      delete nextInventory[label];
+
+      return {
+        ...current,
+        dimensionOptions: nextOptions,
+        dimensionInventory: nextInventory,
+      };
+    });
+  };
+
   const removeSizeOption = (value) => {
     setForm((current) => {
       const nextSizeOptions = current.sizeOptions.filter((option) => option !== value);
@@ -280,17 +366,42 @@ export default function SellerProductsPage() {
     }));
   };
 
+  const updateDimensionInventory = (label, value) => {
+    const normalizedValue = Math.max(0, Number(value || 0));
+    setForm((current) => ({
+      ...current,
+      dimensionInventory: {
+        ...current.dimensionInventory,
+        [label]: normalizedValue,
+      },
+    }));
+  };
+
   const buildPayload = () => {
     const images = form.images.filter(Boolean);
     const payload = {
       ...form,
       price: Number(form.price),
-      originalPrice: Number(form.originalPrice || 0),
+      costPrice: Number(form.costPrice || 0),
+      originalPrice:
+        form.discountType === "none" ? 0 : Number(form.originalPrice || 0),
+      discountEndsAt:
+        form.discountType === "temporary" ? form.discountEndsAt || "" : "",
       stock: computedStock,
       image: images[0] || "",
       images,
       sizeOptions: form.hasSizes ? form.sizeOptions : [],
       colorOptions: form.hasColors ? form.colorOptions : [],
+      dimensionOptions: form.hasDimensions ? form.dimensionOptions : [],
+      hasDimensions: Boolean(form.hasDimensions),
+      dimensions: {
+        length: form.hasDimensions ? form.dimensions.length || "" : "",
+        width: form.hasDimensions ? form.dimensions.width || "" : "",
+        height: form.hasDimensions ? form.dimensions.height || "" : "",
+        unit: form.hasDimensions ? form.dimensions.unit || "cm" : "cm",
+      },
+      dimensionInventory:
+        form.hasDimensions && !form.hasSizes && !form.hasColors ? form.dimensionInventory : {},
       sizeInventory: form.hasSizes && !form.hasColors ? form.sizeInventory : {},
       colorInventory: form.hasColors && !form.hasSizes ? form.colorInventory : {},
       variantInventory: form.hasSizes && form.hasColors ? form.variantInventory : {},
@@ -311,6 +422,7 @@ export default function SellerProductsPage() {
     setForm(initialForm);
     setSizeDraft("");
     setColorDraft("");
+    setDimensionDraft({ length: "", width: "", height: "", unit: "cm" });
   };
 
   const handleSubmit = (event) => {
@@ -332,6 +444,33 @@ export default function SellerProductsPage() {
 
     if (form.hasColors && !form.colorOptions.length) {
       setError(isArabic ? "أضف لونًا واحدًا على الأقل." : "Add at least one color.");
+      return;
+    }
+
+    if (form.discountType !== "none" && !(Number(form.originalPrice || 0) > Number(form.price || 0))) {
+      setError(
+        isArabic
+          ? "Ø§Ù„Ø³Ø¹Ø± Ù‚Ø¨Ù„ Ø§Ù„Ø®ØµÙ… ÙŠØ¬Ø¨ Ø£Ù† ÙŠÙƒÙˆÙ† Ø£Ø¹Ù„Ù‰ Ù…Ù† Ø³Ø¹Ø± Ø§Ù„Ø¨ÙŠØ¹."
+          : "Original price must be higher than the selling price.",
+      );
+      return;
+    }
+
+    if (form.hasDimensions && !form.dimensionOptions.length) {
+      setError(
+        isArabic
+          ? "Ø£Ø¶Ù Ø¨ÙØ¹Ø¯Ù‹Ø§ ÙˆØ§Ø­Ø¯Ù‹Ø§ Ø¹Ù„Ù‰ Ø§Ù„Ø£Ù‚Ù„."
+          : "Add at least one dimension option.",
+      );
+      return;
+    }
+
+    if (form.discountType === "temporary" && !form.discountEndsAt) {
+      setError(
+        isArabic
+          ? "Ø­Ø¯Ø¯ Ù…ÙˆØ¹Ø¯ Ø§Ù†ØªÙ‡Ø§Ø¡ Ø§Ù„Ø®ØµÙ… Ø§Ù„Ù…Ø¤Ù‚Øª."
+          : "Set an end date for the temporary discount.",
+      );
       return;
     }
 
@@ -361,7 +500,12 @@ export default function SellerProductsPage() {
       name: product.name,
       category: product.category,
       price: String(product.price),
+      costPrice: product.costPrice ? String(product.costPrice) : "",
       originalPrice: product.originalPrice ? String(product.originalPrice) : "",
+      discountType:
+        product.discountType ||
+        (Number(product.originalPrice || 0) > Number(product.price || 0) ? "permanent" : "none"),
+      discountEndsAt: product.discountEndsAt || "",
       stock: String(product.stock),
       status: product.status,
       isNew: Boolean(product.isNew),
@@ -371,6 +515,24 @@ export default function SellerProductsPage() {
       hasSizes: Boolean(product.hasSizes),
       sizeMode: product.sizeMode || "alpha",
       sizeOptions: Array.isArray(product.sizeOptions) ? product.sizeOptions : [],
+      hasDimensions: Boolean(product.hasDimensions),
+      dimensionOptions: Array.isArray(product.dimensionOptions) && product.dimensionOptions.length
+        ? product.dimensionOptions
+        : buildDimensionLabelFromProduct(product)
+          ? [buildDimensionLabelFromProduct(product)]
+          : [],
+      dimensions: {
+        length: product.dimensions?.length || "",
+        width: product.dimensions?.width || "",
+        height: product.dimensions?.height || "",
+        unit: product.dimensions?.unit || "cm",
+      },
+      dimensionInventory:
+        product.dimensionInventory && Object.keys(product.dimensionInventory).length
+          ? product.dimensionInventory
+          : buildDimensionLabelFromProduct(product)
+            ? { [buildDimensionLabelFromProduct(product)]: product.stock || 0 }
+            : {},
       hasColors: Boolean(product.hasColors),
       colorOptions: Array.isArray(product.colorOptions) ? product.colorOptions : [],
       sizeInventory: product.sizeInventory || {},
@@ -437,7 +599,7 @@ export default function SellerProductsPage() {
           </div>
 
           <div>
-            <label htmlFor="product-price">{t.price}</label>
+            <label htmlFor="product-price">{t.sellingPrice}</label>
             <input
               id="product-price"
               name="price"
@@ -446,6 +608,18 @@ export default function SellerProductsPage() {
               value={form.price}
               onChange={handleChange}
               required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="product-cost-price">{t.costPrice}</label>
+            <input
+              id="product-cost-price"
+              name="costPrice"
+              type="number"
+              min="0"
+              value={form.costPrice}
+              onChange={handleChange}
             />
           </div>
 
@@ -460,6 +634,33 @@ export default function SellerProductsPage() {
               onChange={handleChange}
             />
           </div>
+
+          <div>
+            <label htmlFor="product-discount-type">{t.discountType}</label>
+            <select
+              id="product-discount-type"
+              name="discountType"
+              value={form.discountType}
+              onChange={handleChange}
+            >
+              <option value="none">{t.noDiscount}</option>
+              <option value="permanent">{t.permanentDiscount}</option>
+              <option value="temporary">{t.temporaryDiscount}</option>
+            </select>
+          </div>
+
+          {form.discountType === "temporary" ? (
+            <div>
+              <label htmlFor="product-discount-ends-at">{t.discountEndsAt}</label>
+              <input
+                id="product-discount-ends-at"
+                name="discountEndsAt"
+                type="datetime-local"
+                value={form.discountEndsAt}
+                onChange={handleChange}
+              />
+            </div>
+          ) : null}
 
           <div>
             <label htmlFor="product-status">{t.productStatus}</label>
@@ -820,6 +1021,119 @@ export default function SellerProductsPage() {
             />
           </div>
 
+          <div className="seller-form-span product-variant-box">
+            <label className="checkbox-label" htmlFor="product-has-dimensions">
+              <input
+                id="product-has-dimensions"
+                name="hasDimensions"
+                type="checkbox"
+                checked={form.hasDimensions}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    hasDimensions: event.target.checked,
+                    dimensionOptions: event.target.checked ? current.dimensionOptions : [],
+                    dimensionInventory: event.target.checked ? current.dimensionInventory : {},
+                  }))
+                }
+              />
+              <span>{isArabic ? "هذا المنتج له أبعاد" : "This product has dimensions"}</span>
+            </label>
+
+            {form.hasDimensions ? (
+              <>
+            <label>{t.productDimensions}</label>
+            <div className="variant-stock-list product-dimensions-grid">
+              <div className="variant-stock-row">
+                <strong>{t.length}</strong>
+                <input
+                  name="length"
+                  type="number"
+                  min="0"
+                  value={dimensionDraft.length}
+                  onChange={(event) =>
+                    setDimensionDraft((current) => ({ ...current, length: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="variant-stock-row">
+                <strong>{t.width}</strong>
+                <input
+                  name="width"
+                  type="number"
+                  min="0"
+                  value={dimensionDraft.width}
+                  onChange={(event) =>
+                    setDimensionDraft((current) => ({ ...current, width: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="variant-stock-row">
+                <strong>{t.height}</strong>
+                <input
+                  name="height"
+                  type="number"
+                  min="0"
+                  value={dimensionDraft.height}
+                  onChange={(event) =>
+                    setDimensionDraft((current) => ({ ...current, height: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="variant-stock-row">
+                <strong>{t.unit}</strong>
+                <select
+                  name="unit"
+                  value={dimensionDraft.unit}
+                  onChange={(event) =>
+                    setDimensionDraft((current) => ({ ...current, unit: event.target.value }))
+                  }
+                >
+                  <option value="cm">cm</option>
+                  <option value="mm">mm</option>
+                  <option value="m">m</option>
+                  <option value="in">in</option>
+                </select>
+              </div>
+            </div>
+            <div className="variant-entry-row">
+              <button className="secondary-button" type="button" onClick={addDimensionOption}>
+                {isArabic ? "إضافة بُعد" : "Add dimension"}
+              </button>
+            </div>
+            {form.dimensionOptions.length ? (
+              <div className="variant-chip-list">
+                {form.dimensionOptions.map((option) => (
+                  <button
+                    key={option}
+                    className="variant-chip"
+                    type="button"
+                    onClick={() => removeDimensionOption(option)}
+                  >
+                    {option} ×
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {form.dimensionOptions.length && !form.hasSizes && !form.hasColors ? (
+              <div className="variant-stock-list">
+                {form.dimensionOptions.map((option) => (
+                  <div key={option} className="variant-stock-row">
+                    <strong>{option}</strong>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.dimensionInventory[option] ?? 0}
+                      onChange={(event) => updateDimensionInventory(option, event.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+              </>
+            ) : null}
+          </div>
+
           {error ? <p className="form-error seller-form-span">{error}</p> : null}
 
           <div className="seller-form-actions seller-form-span">
@@ -846,7 +1160,7 @@ export default function SellerProductsPage() {
         <div className="table-like">
           <div className="table-row table-head seller-products-grid">
             <span>{t.productName}</span>
-            <span>{t.price}</span>
+            <span>{t.sellingPrice}</span>
             <span>{t.stock}</span>
             <span>{t.productStatus}</span>
             <span>{t.actions}</span>
@@ -857,7 +1171,7 @@ export default function SellerProductsPage() {
               <div className="product-name-cell">
                 <img
                   className="product-thumb"
-                  src={product.image || "/logo.png"}
+                  src={product.image || defaultLogoUrl}
                   alt={product.name}
                 />
                 <div className="stacked-cell">
@@ -896,7 +1210,7 @@ export default function SellerProductsPage() {
                   type="button"
                   onClick={() => handleDelete(product.id)}
                 >
-                  {t.delete}
+                  {t.delete || t.deleteProduct}
                 </button>
               </div>
             </div>

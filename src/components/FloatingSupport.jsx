@@ -88,7 +88,7 @@ function scoreProductMatch(query, product, store) {
   return score;
 }
 
-function buildAssistantReply(query, products, approvedStores, language, publicStore) {
+function buildAssistantReply(query, products, approvedStores, language, publicStore, getEffectiveProductPrice) {
   const scopedStores = publicStore ? [publicStore] : approvedStores;
   const scopedProducts = products.filter((product) =>
     scopedStores.some((store) => store.id === product.storeId),
@@ -119,7 +119,7 @@ function buildAssistantReply(query, products, approvedStores, language, publicSt
     suggestions: matches.map(({ product, store }) => ({
       id: product.id,
       name: product.name,
-      price: product.price,
+      price: getEffectiveProductPrice(product),
       storeName: store?.name || "",
       storeSlug: store?.slug || store?.id || "",
       category: product.category,
@@ -139,7 +139,7 @@ function formatCurrency(value) {
 
 export default function FloatingSupport() {
   const { pathname } = useLocation();
-  const { currentUser, language, stores, products } = useApp();
+  const { currentUser, language, stores, products, getEffectiveProductPrice } = useApp();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState([]);
@@ -195,6 +195,7 @@ export default function FloatingSupport() {
       approvedStores,
       language,
       publicStore,
+      getEffectiveProductPrice,
     );
 
     setMessages((current) => [

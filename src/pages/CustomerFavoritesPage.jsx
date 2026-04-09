@@ -20,6 +20,7 @@ export default function CustomerFavoritesPage() {
     getStoreCustomer,
     getStoreCustomerWorkspace,
     toggleFavorite,
+    getEffectiveProductPrice,
   } = useApp();
   const t = translations[language];
   const store = stores.find((item) => item.slug === slug || item.id === slug) || null;
@@ -76,7 +77,7 @@ export default function CustomerFavoritesPage() {
                   <span className="public-product-category">{store.name}</span>
                   <h3>{product.name}</h3>
                   <div className="public-product-footer">
-                    <strong>{formatCurrency(product.price)}</strong>
+                    <strong>{formatCurrency(getEffectiveProductPrice(product))}</strong>
                     <button
                       className="secondary-button row-action danger-button"
                       type="button"

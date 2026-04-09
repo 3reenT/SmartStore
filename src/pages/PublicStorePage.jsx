@@ -28,30 +28,51 @@ function getCategoryBarStyle(color) {
   };
 }
 
+function formatRemainingDiscountTime(value, isArabic) {
+  if (!value) {
+    return "";
+  }
+
+  const remainingMs = new Date(value).getTime() - Date.now();
+
+  if (remainingMs <= 0) {
+    return "";
+  }
+
+  const totalHours = Math.floor(remainingMs / (1000 * 60 * 60));
+  const totalDays = Math.floor(totalHours / 24);
+
+  if (totalDays >= 1) {
+    return isArabic ? `${totalDays} يوم` : `${totalDays} day${totalDays > 1 ? "s" : ""}`;
+  }
+
+  if (totalHours >= 1) {
+    return isArabic ? `${totalHours} ساعة` : `${totalHours} hour${totalHours > 1 ? "s" : ""}`;
+  }
+
+  const minutes = Math.max(1, Math.floor(remainingMs / (1000 * 60)));
+  return isArabic ? `${minutes} دقيقة` : `${minutes} min`;
+}
+
 export default function PublicStorePage() {
   const { slug } = useParams();
   const location = useLocation();
-  const { stores, products, language, currentUser } = useApp();
+  const {
+    stores,
+    products,
+    language,
+    currentUser,
+    getEffectiveProductPrice,
+    getEffectiveProductOriginalPrice,
+    isDiscountCurrentlyActive,
+  } = useApp();
   const [activeShowcaseIndex, setActiveShowcaseIndex] = useState(0);
   const isArabic = language === "ar";
   const store = stores.find((item) => item.slug === slug || item.id === slug) || null;
-
-  if (!store) {
-    return <Navigate to="/" replace />;
-  }
-
-  const canPreviewUnapproved =
-    currentUser?.role === "admin" ||
-    (currentUser?.role === "seller" && currentUser.id === store.sellerId);
-
-  if (store.status !== "approved" && !canPreviewUnapproved) {
-    return <Navigate to="/" replace />;
-  }
-
   const searchParams = new URLSearchParams(location.search);
   const searchTerm = searchParams.get("search")?.trim().toLowerCase() || "";
   const categoryFilter = searchParams.get("category")?.trim() || "";
-  const storeProducts = products.filter((product) => product.storeId === store.id);
+  const storeProducts = store ? products.filter((product) => product.storeId === store.id) : [];
   const filteredProducts = storeProducts.filter((product) => {
     const matchesSearch = searchTerm
       ? [product.name, product.category, product.description]
@@ -74,10 +95,17 @@ export default function PublicStorePage() {
         .sort((left, right) => right.sales - left.sales),
     }))
     .filter((group) => group.products.length);
-  const showcaseImages = Array.isArray(store.galleryImages) ? store.galleryImages.filter(Boolean) : [];
+  const showcaseImages = Array.isArray(store?.galleryImages) ? store.galleryImages.filter(Boolean) : [];
   const sectionLogos =
-    store.sectionLogos && typeof store.sectionLogos === "object" ? store.sectionLogos : {};
+    store?.sectionLogos && typeof store.sectionLogos === "object" ? store.sectionLogos : {};
   const homeSectionKey = isArabic ? "الرئيسية" : "Home";
+  const canPreviewUnapproved =
+    currentUser?.role === "admin" ||
+    (currentUser?.role === "seller" && currentUser.id === store?.sellerId);
+
+  useEffect(() => {
+    setActiveShowcaseIndex(0);
+  }, [store?.id]);
 
   useEffect(() => {
     if (showcaseImages.length <= 1) {
@@ -93,10 +121,17 @@ export default function PublicStorePage() {
 
   const activeShowcaseImage = showcaseImages[activeShowcaseIndex] || showcaseImages[0] || "";
   const showcaseThumbs = useMemo(
-    () =>
-      showcaseImages.filter((_, index) => index !== activeShowcaseIndex).slice(0, 4),
+    () => showcaseImages.filter((_, index) => index !== activeShowcaseIndex).slice(0, 4),
     [showcaseImages, activeShowcaseIndex],
   );
+
+  if (!store) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (store.status !== "approved" && !canPreviewUnapproved) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <section className="public-store-page">
@@ -169,7 +204,7 @@ export default function PublicStorePage() {
               to={`/store/${store.slug || store.id}${searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : ""}#store-products`}
             >
               <span className="store-category-arrow">{isArabic ? "‹" : "›"}</span>
-              <strong>{isArabic ? "الرئيسية" : "All products"}</strong>
+              <strong>{isArabic ? "كل المنتجات" : "All products"}</strong>
               <span className="store-category-icon">
                 {sectionLogos[homeSectionKey] ? (
                   <img
@@ -266,7 +301,10 @@ export default function PublicStorePage() {
             </section>
           ) : null}
 
-          <div className="public-store-section-heading" id={showcaseImages.length ? undefined : "store-products"}>
+          <div
+            className="public-store-section-heading"
+            id={showcaseImages.length ? undefined : "store-products"}
+          >
             <span>{isArabic ? "منتجات مميزة" : "Featured products"}</span>
             <h2>{isArabic ? "جميع منتجات المتجر حسب التصنيف" : "All store products by category"}</h2>
           </div>
@@ -279,6 +317,7 @@ export default function PublicStorePage() {
                     className="storefront-category-section-head"
                     style={getCategoryBarStyle(store.primaryColor)}
                   >
+                    <span>{group.products.length}</span>
                     <div className="storefront-category-title">
                       <span className="storefront-category-head-logo">
                         {sectionLogos[group.category] ? (
@@ -291,7 +330,6 @@ export default function PublicStorePage() {
                       </span>
                       <strong>{group.category}</strong>
                     </div>
-                    <span>{group.products.length}</span>
                   </div>
 
                   <div className="public-product-grid">
@@ -311,9 +349,26 @@ export default function PublicStorePage() {
                         <div className="public-product-body">
                           <span className="public-product-category">{product.category}</span>
                           <h3>{product.name}</h3>
+                          {product.hasDimensions && product.dimensionOptions?.length ? (
+                            <small className="product-dimensions-inline">
+                              {product.dimensionOptions.join(" • ")}
+                            </small>
+                          ) : null}
                           <div className="public-product-footer">
-                            <strong>{formatCurrency(product.price)}</strong>
+                            <strong>{formatCurrency(getEffectiveProductPrice(product))}</strong>
                           </div>
+                          {product.discountType === "temporary" && isDiscountCurrentlyActive(product) ? (
+                            <small className="product-discount-timer-inline">
+                              {isArabic
+                                ? `متبقي: ${formatRemainingDiscountTime(product.discountEndsAt, true)}`
+                                : `Ends in: ${formatRemainingDiscountTime(product.discountEndsAt, false)}`}
+                            </small>
+                          ) : null}
+                          {getEffectiveProductOriginalPrice(product) > getEffectiveProductPrice(product) ? (
+                            <small className="product-old-price-inline">
+                              {formatCurrency(getEffectiveProductOriginalPrice(product))}
+                            </small>
+                          ) : null}
                         </div>
                       </Link>
                     ))}
@@ -322,8 +377,14 @@ export default function PublicStorePage() {
               ))}
             </div>
           ) : (
-            <div className="public-empty-state">
-              {isArabic ? "لا توجد منتجات مطابقة حاليًا." : "No matching products right now."}
+            <div className="public-empty-state large">
+              {searchTerm || categoryFilter
+                ? isArabic
+                  ? "لا توجد منتجات مطابقة لهذا البحث أو التصنيف."
+                  : "No products match this search or category."
+                : isArabic
+                  ? "لا توجد منتجات منشورة بعد."
+                  : "No published products yet."}
             </div>
           )}
         </section>

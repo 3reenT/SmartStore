@@ -7,12 +7,13 @@ function formatCurrency(value) {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(Number(value || 0));
 }
 
 export default function SellerAnalyticsPage() {
   const { currentUser, stores, products, orders, sellerWorkspace, language } = useApp();
   const t = translations[language];
+  const isArabic = language === "ar";
   const sellerStores = stores.filter((store) => store.sellerId === currentUser?.id);
   const activeStoreId = sellerWorkspace[currentUser?.id]?.activeStoreId;
   const sellerStore =
@@ -24,6 +25,14 @@ export default function SellerAnalyticsPage() {
     .filter((order) => order.paymentStatus === "paid")
     .reduce((sum, order) => sum + order.total, 0);
 
+  const profit = sellerProducts.reduce(
+    (sum, product) =>
+      sum +
+      (Number(product.price || 0) - Number(product.costPrice || 0)) *
+        Number(product.sales || 0),
+    0,
+  );
+
   const averageOrderValue = sellerOrders.length
     ? Math.round(revenue / sellerOrders.length)
     : 0;
@@ -34,32 +43,35 @@ export default function SellerAnalyticsPage() {
       value: formatCurrency(sellerStore?.monthlyRevenue || 0),
       tone: "teal",
       badge: "MTH",
-      helper:
-        language === "ar" ? "ملخص أداء الشهر الحالي" : "Current month performance",
+      helper: isArabic ? "ملخص أداء الشهر الحالي" : "Current month performance",
     },
     {
       label: t.totalOrders,
       value: sellerOrders.length,
       tone: "blue",
       badge: "ORD",
-      helper:
-        language === "ar" ? "طلبات مرتبطة بمتجرك" : "Orders linked to your store",
+      helper: isArabic ? "طلبات مرتبطة بمتجرك" : "Orders linked to your store",
     },
     {
       label: t.averageOrderValue,
       value: formatCurrency(averageOrderValue),
       tone: "green",
       badge: "AVG",
-      helper:
-        language === "ar" ? "متوسط قيمة الطلب" : "Average order amount",
+      helper: isArabic ? "متوسط قيمة الطلب" : "Average order amount",
+    },
+    {
+      label: t.estimatedProfit,
+      value: formatCurrency(profit),
+      tone: "amber",
+      badge: "PFT",
+      helper: isArabic ? "محسوب من فرق سعر البيع والتكلفة" : "Calculated from selling price minus cost price",
     },
     {
       label: t.aiDescriptions,
       value: sellerProducts.filter((product) => product.description).length,
       tone: "violet",
       badge: "AI",
-      helper:
-        language === "ar" ? "منتجات موصوفة داخل الكتالوج" : "Products enriched in catalog",
+      helper: isArabic ? "منتجات موصوفة داخل الكتالوج" : "Products enriched in catalog",
     },
   ];
 
@@ -132,6 +144,10 @@ export default function SellerAnalyticsPage() {
             <div className="seller-metric-pill">
               <span>{t.liveRevenue}</span>
               <strong>{formatCurrency(revenue)}</strong>
+            </div>
+            <div className="seller-metric-pill">
+              <span>{t.estimatedProfit}</span>
+              <strong>{formatCurrency(profit)}</strong>
             </div>
             <div className="seller-metric-pill">
               <span>{t.productsInCatalog}</span>

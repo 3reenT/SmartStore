@@ -112,15 +112,41 @@ export default function HomePage() {
     <section className="guest-landing">
       <section className="guest-hero">
         <div className="guest-hero-media">
-          <div className="phone-mock">
-            <div className="phone-notch" />
-            <div className="phone-screen">
-              <div className="screen-card large" />
-              <div className="screen-row">
-                <div className="screen-card" />
-                <div className="screen-card" />
+          <div className="storefront-stage">
+            <div className="storefront-stage-glow left" />
+            <div className="storefront-stage-glow right" />
+            <div className="storefront-stage-shell">
+              <div className="storefront-stage-topbar">
+                <div className="storefront-stage-logo">{t.smartstore}</div>
+                <span>{isArabic ? "منصة تجارة ذكية" : "Intelligent commerce platform"}</span>
               </div>
-              <div className="screen-strip" />
+
+              <div className="storefront-stage-grid">
+                <article className="storefront-stage-card home" data-label="HS">
+                  <strong>{isArabic ? "Home Store" : "Home Store"}</strong>
+                  <span>{isArabic ? "منزل وحديقة" : "Home & Garden"}</span>
+                </article>
+                <article className="storefront-stage-card featured" data-label="Smart">
+                  <strong>{t.smartstore}</strong>
+                  <span>{isArabic ? "إدارة المتاجر والطلبات" : "Storefront and order operations"}</span>
+                </article>
+                <article className="storefront-stage-card tech" data-label="TS">
+                  <strong>{isArabic ? "TechStore" : "TechStore"}</strong>
+                  <span>{isArabic ? "إلكترونيات" : "Electronics"}</span>
+                </article>
+                <article className="storefront-stage-card sport" data-label="AW">
+                  <strong>{isArabic ? "Activewear" : "Activewear"}</strong>
+                  <span>{isArabic ? "رياضة ولياقة" : "Sports & Fitness"}</span>
+                </article>
+                <article className="storefront-stage-card fashion" data-label="AP">
+                  <strong>{isArabic ? "Apparel" : "Apparel"}</strong>
+                  <span>{isArabic ? "أزياء وملابس" : "Fashion & Apparel"}</span>
+                </article>
+                <article className="storefront-stage-card green" data-label="GH">
+                  <strong>{isArabic ? "Green Harvest" : "Green Harvest"}</strong>
+                  <span>{isArabic ? "منتجات وحدائق" : "Produce & Gardening"}</span>
+                </article>
+              </div>
             </div>
           </div>
         </div>
@@ -273,7 +299,7 @@ export default function HomePage() {
               target="_blank"
               rel="noreferrer"
             >
-              {store.logo && store.logo !== "/logo.png" ? (
+              {store.logo ? (
                 <img src={store.logo} alt={store.name} className="brand-store-image" />
               ) : (
                 <div

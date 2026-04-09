@@ -29,7 +29,7 @@ function createDraft(store) {
     storeUrl: store.storeUrl || "",
     theme: store.theme || "Modern",
     primaryColor: store.primaryColor || "#18c79c",
-    logo: store.logo && store.logo !== "/logo.png" ? store.logo : "",
+    logo: store.logo || "",
     banner: store.banner || "",
     galleryImages: Array.isArray(store.galleryImages) ? store.galleryImages : [],
     sectionLogos:
@@ -97,6 +97,16 @@ export default function SellerStoreSettingsPage() {
     return () => window.clearTimeout(timeout);
   }, [saveError]);
 
+  const persistStoreDraft = (nextDraft) => {
+    updateStore(store.id, {
+      ...nextDraft,
+      sellerId: currentUser.id,
+      ownerName: currentUser.name,
+    });
+    setSaveError("");
+    setSavedMessage(t.savedToStore);
+  };
+
   if (!store) {
     return <Navigate to="/seller/store" replace />;
   }
@@ -125,7 +135,11 @@ export default function SellerStoreSettingsPage() {
     }
 
     const value = await readFileAsDataUrl(file);
-    setDraft((current) => ({ ...current, [field]: value }));
+    setDraft((current) => {
+      const nextDraft = { ...current, [field]: value };
+      persistStoreDraft(nextDraft);
+      return nextDraft;
+    });
   };
 
   const handleSectionLogoChange = async (section, file) => {
@@ -134,13 +148,17 @@ export default function SellerStoreSettingsPage() {
     }
 
     const value = await readFileAsDataUrl(file);
-    setDraft((current) => ({
-      ...current,
-      sectionLogos: {
-        ...current.sectionLogos,
-        [section]: value,
-      },
-    }));
+    setDraft((current) => {
+      const nextDraft = {
+        ...current,
+        sectionLogos: {
+          ...current.sectionLogos,
+          [section]: value,
+        },
+      };
+      persistStoreDraft(nextDraft);
+      return nextDraft;
+    });
   };
 
   const removeSectionLogo = (section) => {
@@ -148,10 +166,12 @@ export default function SellerStoreSettingsPage() {
       const nextSectionLogos = { ...current.sectionLogos };
       delete nextSectionLogos[section];
 
-      return {
+      const nextDraft = {
         ...current,
         sectionLogos: nextSectionLogos,
       };
+      persistStoreDraft(nextDraft);
+      return nextDraft;
     });
   };
 
@@ -164,17 +184,25 @@ export default function SellerStoreSettingsPage() {
 
     const uploadedImages = await Promise.all(selectedFiles.map((file) => readFileAsDataUrl(file)));
 
-    setDraft((current) => ({
-      ...current,
-      galleryImages: [...current.galleryImages, ...uploadedImages].slice(0, 6),
-    }));
+    setDraft((current) => {
+      const nextDraft = {
+        ...current,
+        galleryImages: [...current.galleryImages, ...uploadedImages].slice(0, 6),
+      };
+      persistStoreDraft(nextDraft);
+      return nextDraft;
+    });
   };
 
   const removeGalleryImage = (index) => {
-    setDraft((current) => ({
-      ...current,
-      galleryImages: current.galleryImages.filter((_, imageIndex) => imageIndex !== index),
-    }));
+    setDraft((current) => {
+      const nextDraft = {
+        ...current,
+        galleryImages: current.galleryImages.filter((_, imageIndex) => imageIndex !== index),
+      };
+      persistStoreDraft(nextDraft);
+      return nextDraft;
+    });
   };
 
   const saveCurrentStore = () => {
@@ -210,6 +238,14 @@ export default function SellerStoreSettingsPage() {
         <div className="panel-tools">
           {saveError ? <span className="form-error">{saveError}</span> : null}
           {savedMessage ? <span>{savedMessage}</span> : null}
+          <Link
+            className="secondary-button"
+            to={`/store/${store.slug || store.id}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {language === "ar" ? "عرض المتجر" : "View store"}
+          </Link>
           <Link className="secondary-button" to="/seller/store">
             {t.myStores}
           </Link>

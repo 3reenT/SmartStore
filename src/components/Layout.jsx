@@ -2,6 +2,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { useApp } from "../state/AppContext";
 import { translations } from "../i18n";
 import FloatingSupport from "./FloatingSupport";
+import defaultLogoUrl from "../assets/defaultLogo";
 
 export default function Layout({ children }) {
   const { currentUser, logout, language, setLanguage } = useApp();
@@ -15,7 +16,7 @@ export default function Layout({ children }) {
       {!isPublicStoreRoute ? (
         <header className="site-header">
           <Link className="brand" to="/">
-            <img className="brand-logo" src="/logo.png" alt="SmartStore logo" />
+            <img className="brand-logo" src={defaultLogoUrl} alt="SmartStore logo" />
             <div>
               <strong className="brand-title">{t.smartstore}</strong>
             </div>
