@@ -72,17 +72,6 @@ textarea {
   position: relative;
 }
 
-.app-backdrop {
-  inset: 0;
-  pointer-events: none;
-  position: fixed;
-  z-index: 0;
-  background:
-    radial-gradient(circle at 15% 18%, rgba(15, 118, 110, 0.06), transparent 22%),
-    radial-gradient(circle at 85% 12%, rgba(24, 49, 83, 0.05), transparent 18%),
-    radial-gradient(circle at 72% 75%, rgba(217, 119, 6, 0.04), transparent 20%);
-}
-
 .site-header {
   align-items: center;
   backdrop-filter: blur(14px);
@@ -96,6 +85,11 @@ textarea {
   position: sticky;
   top: 0;
   z-index: 10;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, backdrop-filter 0.25s ease;
+}
+
+.site-header:hover {
+  box-shadow: 0 18px 40px rgba(71, 50, 26, 0.1);
 }
 
 .site-header-shell {
@@ -154,12 +148,15 @@ textarea {
   color: var(--muted);
   font-weight: 700;
   padding: 10px 14px;
+  transition: transform 0.22s ease, background 0.22s ease, color 0.22s ease;
 }
 
+.main-nav a:hover,
 .main-nav a.active {
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.88);
   box-shadow: inset 0 0 0 1px rgba(219, 205, 185, 0.8);
   color: var(--navy);
+  transform: translateY(-1px);
 }
 
 .language-toggle {
@@ -176,6 +173,12 @@ textarea {
   border-radius: 999px;
   cursor: pointer;
   padding: 8px 10px;
+  transition: transform 0.22s ease, background 0.22s ease;
+}
+
+.language-button:hover,
+.language-button.active {
+  transform: translateY(-1px);
 }
 
 .language-button.active {
@@ -199,11 +202,13 @@ textarea {
   box-shadow: 0 14px 26px rgba(15, 118, 110, 0.2);
   color: white;
   font-weight: 800;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
 }
 
 .primary-button:hover {
   background: linear-gradient(135deg, var(--accent-dark), var(--accent));
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 18px 32px rgba(15, 118, 110, 0.28);
 }
 
 .secondary-button {
@@ -211,6 +216,13 @@ textarea {
   border: 1px solid rgba(220, 205, 185, 0.9);
   color: var(--text);
   font-weight: 700;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+
+.secondary-button:hover {
+  background: rgba(255, 255, 255, 0.72);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 118, 110, 0.12);
 }
 
 .full-width {
@@ -297,6 +309,7 @@ textarea {
   border-radius: 32px;
   box-shadow: var(--shadow);
   padding: 30px;
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
 }
 
 .hero-card {
@@ -364,6 +377,7 @@ textarea {
   border-radius: 24px;
   box-shadow: var(--shadow-soft);
   padding: 18px;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
 .product-preview-actions,
@@ -1821,6 +1835,12 @@ textarea {
   box-shadow: 0 48px 110px rgba(0, 0, 0, 0.24);
   backdrop-filter: blur(18px);
   animation: heroImageFloat 8s ease-in-out infinite;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hero-image-shell:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 58px 130px rgba(0, 0, 0, 0.26);
 }
 
 .hero-image-shell::before {
@@ -1841,6 +1861,11 @@ textarea {
   border-radius: 24px;
   transform-origin: center;
   animation: heroImageDrift 7s ease-in-out infinite;
+  transition: transform 0.35s ease;
+}
+
+.hero-animated-image:hover {
+  transform: scale(1.01);
 }
 
 .hero-image-shell::after {
@@ -2931,10 +2956,17 @@ textarea {
 .public-store-highlight-card,
 .public-category-card,
 .public-product-card {
-  background: rgba(255, 255, 255, 0.84);
-  border: 1px solid rgba(220, 205, 185, 0.75);
+  background: rgba(12, 20, 38, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 28px;
   box-shadow: var(--shadow-soft);
+}
+
+.public-store-highlight-card:hover,
+.public-category-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.32);
+  border-color: rgba(245, 199, 90, 0.14);
 }
 
 .public-store-highlight-card {
@@ -3003,11 +3035,21 @@ textarea {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  background: rgba(12, 20, 38, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.32);
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+}
+
+.public-product-card:hover {
+  transform: translateY(-3px) scale(1.005);
+  box-shadow: 0 36px 100px rgba(0, 0, 0, 0.38);
+  border-color: rgba(245, 199, 90, 0.16);
 }
 
 .public-product-media {
   align-items: center;
-  background: linear-gradient(180deg, #fcfaf6, #f2e8da);
+  background: linear-gradient(180deg, rgba(15, 22, 38, 0.95), rgba(10, 15, 30, 0.98));
   display: flex;
   flex: 0 0 330px;
   justify-content: center;
