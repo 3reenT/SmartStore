@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useApp } from "../../state/AppContext";
 import { translations } from "../../i18n";
 
-function formatCurrency(value) {
+function formatCurrency(value, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -18,6 +18,7 @@ export default function SellerOrdersPage() {
   const activeStoreId = sellerWorkspace[currentUser?.id]?.activeStoreId;
   const sellerStore =
     sellerStores.find((store) => store.id === activeStoreId) || sellerStores[0] || null;
+  const storeCurrency = sellerStore?.currency || "USD";
   const sellerOrders = orders.filter((order) => order.storeId === sellerStore?.id);
   const [savedMessage, setSavedMessage] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -72,7 +73,9 @@ export default function SellerOrdersPage() {
           <option value="all">{t.filterByDelivery}: {t.all}</option>
           <option value="awaiting pickup">{t.awaitingPickup}</option>
           <option value="ready">{t.ready}</option>
+          <option value="outForDelivery">{t.outForDelivery}</option>
           <option value="delivered">{t.delivered}</option>
+          <option value="failed">{t.failed}</option>
         </select>
 
         <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
@@ -105,7 +108,7 @@ export default function SellerOrdersPage() {
                 {order.itemsCount} {t.items}
               </small>
             </div>
-            <span>{formatCurrency(order.total)}</span>
+            <span>{formatCurrency(order.total, storeCurrency)}</span>
             <span className={`status-pill ${order.paymentStatus}`}>{t[order.paymentStatus] || order.paymentStatus}</span>
             <span>{t[order.deliveryStatus] || order.deliveryStatus}</span>
             <span className={`status-pill ${order.status}`}>{t[order.status]}</span>

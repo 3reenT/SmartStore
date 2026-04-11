@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../state/AppContext";
 import StorefrontTopBar from "../components/StorefrontTopBar";
 
-function formatCurrency(value) {
+function formatCurrency(value, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 }
@@ -102,6 +102,7 @@ export default function PublicStorePage() {
   const canPreviewUnapproved =
     currentUser?.role === "admin" ||
     (currentUser?.role === "seller" && currentUser.id === store?.sellerId);
+  const storeCurrency = store?.currency || "USD";
 
   useEffect(() => {
     setActiveShowcaseIndex(0);
@@ -355,7 +356,7 @@ export default function PublicStorePage() {
                             </small>
                           ) : null}
                           <div className="public-product-footer">
-                            <strong>{formatCurrency(getEffectiveProductPrice(product))}</strong>
+                            <strong>{formatCurrency(getEffectiveProductPrice(product), storeCurrency)}</strong>
                           </div>
                           {product.discountType === "temporary" && isDiscountCurrentlyActive(product) ? (
                             <small className="product-discount-timer-inline">
@@ -366,7 +367,7 @@ export default function PublicStorePage() {
                           ) : null}
                           {getEffectiveProductOriginalPrice(product) > getEffectiveProductPrice(product) ? (
                             <small className="product-old-price-inline">
-                              {formatCurrency(getEffectiveProductOriginalPrice(product))}
+                              {formatCurrency(getEffectiveProductOriginalPrice(product), storeCurrency)}
                             </small>
                           ) : null}
                         </div>

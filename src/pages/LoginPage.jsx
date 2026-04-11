@@ -56,6 +56,8 @@ export default function LoginPage() {
         ? "/admin"
         : result.user.role === "seller"
           ? "/seller"
+          : result.user.role === "delivery"
+            ? "/delivery"
           : result.user.role === "customer"
             ? `/store/${store?.slug || store?.id}`
             : "/");
@@ -119,6 +121,10 @@ export default function LoginPage() {
               <div className="credential-box">
                 <span>{t.demoSellerAccount}</span>
                 <strong>lina@smartstore.ps / seller123</strong>
+              </div>
+              <div className="credential-box">
+                <span>{t.demoDeliveryAccount}</span>
+                <strong>delivery@smartstore.ps / delivery123</strong>
               </div>
             </>
           ) : null}

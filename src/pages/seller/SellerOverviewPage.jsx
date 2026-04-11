@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import { useApp } from "../../state/AppContext";
 import { translations } from "../../i18n";
 
-function formatCurrency(value) {
+function formatCurrency(value, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -28,6 +28,7 @@ export default function SellerOverviewPage() {
     sellerStores.find((store) => store.id === activeStoreId) || sellerStores[0] || null;
   const activeProducts = products.filter((product) => product.storeId === activeStore?.id);
   const activeOrders = orders.filter((order) => order.storeId === activeStore?.id);
+  const storeCurrency = activeStore?.currency || "USD";
   const activeThreshold = storePreferences[activeStore?.id]?.lowStockThreshold ?? 5;
   const lowStockProducts = activeProducts.filter(
     (product) => product.stock <= activeThreshold,
@@ -110,7 +111,7 @@ export default function SellerOverviewPage() {
     },
     {
       label: t.liveRevenue,
-      value: formatCurrency(liveRevenue),
+      value: formatCurrency(liveRevenue, storeCurrency),
       tone: "teal",
       badge: "REV",
       helper: language === "ar" ? "من الطلبات المدفوعة لهذا المتجر" : "From paid orders in this store",
@@ -131,12 +132,15 @@ export default function SellerOverviewPage() {
     },
     {
       label: t.averageOrderValue,
-      value: formatCurrency(averageOrderValue),
+      value: formatCurrency(averageOrderValue, storeCurrency),
       tone: "green",
       badge: "AOV",
       helper: language === "ar" ? "متوسط قيمة الطلب لهذا المتجر" : "Average order value for this store",
     },
   ];
+  const filteredStats = stats.filter(
+    (item) => item.badge !== "STR" && item.badge !== "AOV",
+  );
 
   if (!sellerStores.length) {
     return (
@@ -181,7 +185,7 @@ export default function SellerOverviewPage() {
           </div>
         </article>
 
-        {stats.map((item) => (
+        {filteredStats.map((item) => (
           <article
             key={item.label}
             className={`stat-card overview-stat-card tone-${item.tone}`}
@@ -219,7 +223,7 @@ export default function SellerOverviewPage() {
 
             <div className="seller-metric-pill">
               <span>{t.monthlySales}</span>
-              <strong>{formatCurrency(activeStore.monthlyRevenue)}</strong>
+              <strong>{formatCurrency(activeStore.monthlyRevenue, storeCurrency)}</strong>
             </div>
 
             <div className="seller-metric-pill">
@@ -276,7 +280,7 @@ export default function SellerOverviewPage() {
                     {product.category} | {product.sales} sold
                   </small>
                 </div>
-                <strong>{formatCurrency(product.price)}</strong>
+                <strong>{formatCurrency(product.price, storeCurrency)}</strong>
               </div>
             ))}
           </div>
@@ -285,7 +289,7 @@ export default function SellerOverviewPage() {
         <article className="panel">
           <div className="panel-header">
             <h2>{t.storeHealth}</h2>
-            <span>{formatCurrency(activeStore.monthlyRevenue)} {t.revenue}</span>
+            <span>{formatCurrency(activeStore.monthlyRevenue, storeCurrency)} {t.revenue}</span>
           </div>
 
           <div className="seller-analytics-stack">
@@ -299,7 +303,7 @@ export default function SellerOverviewPage() {
             </div>
             <div className="seller-metric-pill">
               <span>{t.monthlySales}</span>
-              <strong>{formatCurrency(activeStore.monthlyRevenue)}</strong>
+              <strong>{formatCurrency(activeStore.monthlyRevenue, storeCurrency)}</strong>
             </div>
           </div>
         </article>

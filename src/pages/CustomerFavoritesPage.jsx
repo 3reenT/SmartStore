@@ -3,10 +3,10 @@ import { useApp } from "../state/AppContext";
 import { translations } from "../i18n";
 import StorefrontTopBar from "../components/StorefrontTopBar";
 
-function formatCurrency(value) {
+function formatCurrency(value, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 }
@@ -24,6 +24,7 @@ export default function CustomerFavoritesPage() {
   } = useApp();
   const t = translations[language];
   const store = stores.find((item) => item.slug === slug || item.id === slug) || null;
+  const storeCurrency = store?.currency || "USD";
 
   if (!store) {
     return <Navigate to="/" replace />;
@@ -77,7 +78,7 @@ export default function CustomerFavoritesPage() {
                   <span className="public-product-category">{store.name}</span>
                   <h3>{product.name}</h3>
                   <div className="public-product-footer">
-                    <strong>{formatCurrency(getEffectiveProductPrice(product))}</strong>
+                    <strong>{formatCurrency(getEffectiveProductPrice(product), storeCurrency)}</strong>
                     <button
                       className="secondary-button row-action danger-button"
                       type="button"

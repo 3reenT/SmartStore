@@ -26,6 +26,7 @@ export default function Layout({ children }) {
             <NavLink to="/">{t.navHome}</NavLink>
             {currentUser?.role === "admin" && <NavLink to="/admin">{t.navAdmin}</NavLink>}
             {currentUser?.role === "seller" && <NavLink to="/seller">{t.navSeller}</NavLink>}
+            {currentUser?.role === "delivery" && <NavLink to="/delivery">{t.navDelivery}</NavLink>}
           </nav>
 
           <div className="header-actions">
