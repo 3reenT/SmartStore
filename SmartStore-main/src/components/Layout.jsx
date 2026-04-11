@@ -1,0 +1,95 @@
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { useApp } from "../state/AppContext";
+import { translations } from "../i18n";
+import { useEffect } from "react";
+import FloatingSupport from "./FloatingSupport";
+import defaultLogoUrl from "../assets/defaultLogo";
+
+export default function Layout({ children }) {
+  const { currentUser, logout, language, setLanguage } = useApp();
+  const location = useLocation();
+  const t = translations[language];
+  const isPublicStoreRoute = /^\/store\/[^/]+(?:\/.*)?$/.test(location.pathname);
+  const hideGuestLoginOnHome = location.pathname === "/" && !currentUser;
+
+  useEffect(() => {
+    const pageShell = document.querySelector(".page-shell");
+    if (!pageShell) return;
+
+    const targets = pageShell.querySelectorAll(
+      "section, .panel, .dashboard-stack, .auth-wrapper, .public-store-page, .public-product-page, .page-shell > *"
+    );
+
+    targets.forEach((target) => {
+      target.classList.add("scroll-reveal");
+    });
+
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("revealed");
+            obs.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    targets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, [location.pathname]);
+
+  return (
+    <div className="app-shell">
+      {!isPublicStoreRoute ? (
+        <header className="site-header">
+          <Link className="brand" to="/">
+            <img className="brand-logo" src={defaultLogoUrl} alt="SmartStore logo" />
+            <div>
+              <strong className="brand-title">{t.smartstore}</strong>
+            </div>
+          </Link>
+
+          <nav className="main-nav">
+            <NavLink to="/">{t.navHome}</NavLink>
+            {currentUser?.role === "admin" && <NavLink to="/admin">{t.navAdmin}</NavLink>}
+            {currentUser?.role === "seller" && <NavLink to="/seller">{t.navSeller}</NavLink>}
+          </nav>
+
+          <div className="header-actions">
+            <div className="language-toggle">
+              <button
+                className={language === "en" ? "language-button active" : "language-button"}
+                onClick={() => setLanguage("en")}
+              >
+                EN
+              </button>
+              <button
+                className={language === "ar" ? "language-button active" : "language-button"}
+                onClick={() => setLanguage("ar")}
+              >
+                AR
+              </button>
+            </div>
+            {currentUser ? (
+              <>
+                <span className="user-chip">{currentUser.name}</span>
+                <button className="secondary-button" onClick={logout}>
+                  {t.logout}
+                </button>
+              </>
+            ) : !hideGuestLoginOnHome ? (
+              <Link className="primary-button" to="/login">
+                {t.login}
+              </Link>
+            ) : null}
+          </div>
+        </header>
+      ) : null}
+
+      <main className="page-shell">{children}</main>
+      <FloatingSupport />
+    </div>
+  );
+}
