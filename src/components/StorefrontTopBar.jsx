@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useApp } from "../state/AppContext";
 
@@ -90,6 +90,28 @@ function UserIcon() {
   );
 }
 
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M7 7.5 8.5 5h7L17 7.5h2.2A1.8 1.8 0 0 1 21 9.3v8.4A1.8 1.8 0 0 1 19.2 19H4.8A1.8 1.8 0 0 1 3 17.7V9.3A1.8 1.8 0 0 1 4.8 7.5H7Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <circle
+        cx="12"
+        cy="13"
+        r="3.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
 function TikTokIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -145,6 +167,8 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
   const [accountOpen, setAccountOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [searchImageName, setSearchImageName] = useState("");
+  const searchImageInputRef = useRef(null);
   const storeCustomer = getStoreCustomer(store.id);
   const storeWorkspace = getStoreCustomerWorkspace(store.id);
   const isCustomer = Boolean(storeCustomer);
@@ -361,10 +385,33 @@ export default function StorefrontTopBar({ store, searchTo = "#store-products" }
                 onChange={(event) => setSearchValue(event.target.value)}
                 placeholder={isArabic ? "ابحث عن منتج..." : "Search for a product..."}
               />
+              <input
+                ref={searchImageInputRef}
+                type="file"
+                accept="image/*"
+                className="storefront-camera-input"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  setSearchImageName(file ? file.name : "");
+                }}
+              />
+              <button
+                type="button"
+                className="storefront-camera-button"
+                onClick={() => searchImageInputRef.current?.click()}
+                title={isArabic ? "ابحث بالصورة" : "Search by image"}
+              >
+                <CameraIcon />
+              </button>
               <button type="submit" className="storefront-account-action">
                 {isArabic ? "بحث" : "Search"}
               </button>
             </form>
+            {searchImageName ? (
+              <span className="storefront-search-image-note">
+                {isArabic ? "تم اختيار:" : "Selected:"} {searchImageName}
+              </span>
+            ) : null}
           </div>
         </div>
       ) : null}

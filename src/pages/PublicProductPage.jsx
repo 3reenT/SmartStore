@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../state/AppContext";
 import StorefrontTopBar from "../components/StorefrontTopBar";
 
-function formatCurrency(value) {
+function formatCurrency(value, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 }
@@ -68,9 +68,11 @@ export default function PublicProductPage() {
     language,
     getStoreCustomer,
     getStoreCustomerWorkspace,
+    getProductComments,
     toggleFavorite,
     addToCart,
     buyNow,
+    addProductComment,
     getEffectiveProductPrice,
     getEffectiveProductOriginalPrice,
     getEffectiveProductDiscountPercent,
@@ -90,6 +92,8 @@ export default function PublicProductPage() {
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedDimension, setSelectedDimension] = useState("");
   const [selectionError, setSelectionError] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [showAllComments, setShowAllComments] = useState(false);
 
   useEffect(() => {
     setActiveImage(productImages[0] || "");
@@ -115,6 +119,8 @@ export default function PublicProductPage() {
     }
 
     setSelectionError("");
+    setShowAllComments(false);
+    setCommentText("");
   }, [
     productId,
     product?.hasSizes,
@@ -162,6 +168,7 @@ export default function PublicProductPage() {
     return <Navigate to="/" replace />;
   }
 
+  const storeCurrency = store?.currency || "USD";
   const currentPrice = getEffectiveProductPrice(product);
   const originalPrice = getEffectiveProductOriginalPrice(product);
   const discount = getEffectiveProductDiscountPercent(product);
@@ -173,6 +180,8 @@ export default function PublicProductPage() {
   const isCustomer = Boolean(storeCustomer);
   const storeWorkspace = getStoreCustomerWorkspace(store.id);
   const isFavorite = storeWorkspace.favorites.includes(product.id);
+  const productComments = getProductComments(product.id);
+  const visibleComments = showAllComments ? productComments : productComments.slice(0, 2);
   const loginRedirectState = {
     from: `${location.pathname}${location.search}${location.hash}`,
     storeId: store.id,
@@ -246,6 +255,15 @@ export default function PublicProductPage() {
     );
   };
 
+  const handleAddComment = () => {
+    requireCustomer(() => {
+      const result = addProductComment(store.id, product.id, commentText);
+      if (result.success) {
+        setCommentText("");
+      }
+    });
+  };
+
   return (
     <section className="public-product-page">
       <StorefrontTopBar
@@ -293,8 +311,8 @@ export default function PublicProductPage() {
           <h1>{product.name}</h1>
 
           <div className="public-product-pricing">
-            <span className="current-price">{formatCurrency(currentPrice)}</span>
-            {discount > 0 ? <span className="old-price">{formatCurrency(originalPrice)}</span> : null}
+            <span className="current-price">{formatCurrency(currentPrice, storeCurrency)}</span>
+            {discount > 0 ? <span className="old-price">{formatCurrency(originalPrice, storeCurrency)}</span> : null}
           </div>
 
           {temporaryDiscountRemaining ? (
@@ -466,11 +484,82 @@ export default function PublicProductPage() {
                 <span className="public-product-category">{item.category}</span>
                 <h3>{item.name}</h3>
                 <div className="public-product-footer">
-                  <strong>{formatCurrency(getEffectiveProductPrice(item))}</strong>
+                  <strong>{formatCurrency(getEffectiveProductPrice(item), storeCurrency)}</strong>
                 </div>
               </div>
             </Link>
           ))}
+        </div>
+      </section>
+
+      <section className="public-store-section">
+        <div className="public-store-section-heading">
+          <span>{isArabic ? "آراء العملاء" : "Customer reviews"}</span>
+          <h2>{isArabic ? "التعليقات على المنتج" : "Product comments"}</h2>
+        </div>
+
+        <div className="product-comments-panel">
+          {visibleComments.length ? (
+            <div className="product-comments-list">
+              {visibleComments.map((comment) => (
+                <div key={comment.id} className="product-comment-card">
+                  <div className="product-comment-header">
+                    <strong>{comment.userName}</strong>
+                    <span>
+                      {new Date(comment.createdAt).toLocaleDateString(
+                        isArabic ? "ar" : "en-US",
+                      )}
+                    </span>
+                  </div>
+                  <p>{comment.text}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="settings-subtitle">
+              {isArabic ? "لا توجد تعليقات بعد." : "No comments yet."}
+            </p>
+          )}
+
+          {productComments.length > 2 ? (
+            <button
+              type="button"
+              className="secondary-button comment-toggle-button"
+              onClick={() => setShowAllComments((current) => !current)}
+            >
+              {showAllComments
+                ? isArabic
+                  ? "إظهار أقل"
+                  : "Show less"
+                : isArabic
+                  ? "إظهار الكل"
+                  : "Show all"}
+            </button>
+          ) : null}
+
+          <div className="product-comment-form">
+            <textarea
+              placeholder={
+                isArabic
+                  ? "اكتب تعليقك عن المنتج..."
+                  : "Write your comment about this product..."
+              }
+              value={commentText}
+              onChange={(event) => setCommentText(event.target.value)}
+            />
+            <button
+              type="button"
+              className="primary-button"
+              onClick={handleAddComment}
+            >
+              {isArabic ? "نشر التعليق" : "Post comment"}
+            </button>
+            {!isCustomer ? (
+              <span className="helper-text">
+                {isArabic ? "سجل الدخول لتكتب تعليقًا." : "Sign in to leave a comment."}
+              </span>
+            ) : null}
+          </div>
         </div>
       </section>
     </section>

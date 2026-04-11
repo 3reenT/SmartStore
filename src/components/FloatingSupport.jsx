@@ -120,6 +120,7 @@ function buildAssistantReply(query, products, approvedStores, language, publicSt
       id: product.id,
       name: product.name,
       price: getEffectiveProductPrice(product),
+      currency: store?.currency || "USD",
       storeName: store?.name || "",
       storeSlug: store?.slug || store?.id || "",
       category: product.category,
@@ -129,10 +130,10 @@ function buildAssistantReply(query, products, approvedStores, language, publicSt
   };
 }
 
-function formatCurrency(value) {
+function formatCurrency(value, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 }
@@ -272,7 +273,7 @@ export default function FloatingSupport() {
                         <div className="chatbot-suggestion-copy">
                           <strong>{suggestion.name}</strong>
                           <span>{suggestion.storeName}</span>
-                          <small>{formatCurrency(suggestion.price)}</small>
+                          <small>{formatCurrency(suggestion.price, suggestion.currency)}</small>
                         </div>
                       </a>
                     ))}

@@ -3,10 +3,10 @@ import { useApp } from "../../state/AppContext";
 import { translations } from "../../i18n";
 import defaultLogoUrl from "../../assets/defaultLogo";
 
-function formatCurrency(value) {
+function formatCurrency(value, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -89,6 +89,7 @@ export default function SellerProductsPage() {
   const activeStoreId = sellerWorkspace[currentUser?.id]?.activeStoreId;
   const sellerStore =
     sellerStores.find((store) => store.id === activeStoreId) || sellerStores[0] || null;
+  const storeCurrency = sellerStore?.currency || "USD";
   const sellerProducts = products.filter((product) => product.storeId === sellerStore?.id);
   const [editingId, setEditingId] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
@@ -1194,7 +1195,7 @@ export default function SellerProductsPage() {
                   ) : null}
                 </div>
               </div>
-              <span>{formatCurrency(product.price)}</span>
+              <span>{formatCurrency(product.price, storeCurrency)}</span>
               <span>{product.stock}</span>
               <span>{product.status}</span>
               <div className="row-actions">

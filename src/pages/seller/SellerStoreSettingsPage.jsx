@@ -45,6 +45,7 @@ function createDraft(store) {
       instagram: store.socialLinks?.instagram || "",
     },
     subscription: store.subscription || "Free",
+    currency: store.currency || "USD",
   };
 }
 
@@ -290,6 +291,14 @@ export default function SellerStoreSettingsPage() {
               <div>
                 <label>{t.city}</label>
                 <input name="city" value={draft.city} onChange={handleDraftChange} />
+              </div>
+              <div>
+                <label>{language === "ar" ? "العملة" : "Currency"}</label>
+                <select name="currency" value={draft.currency} onChange={handleDraftChange}>
+                  <option value="USD">{language === "ar" ? "دولار (USD)" : "US Dollar (USD)"}</option>
+                  <option value="JOD">{language === "ar" ? "دينار (JOD)" : "Jordanian Dinar (JOD)"}</option>
+                  <option value="ILS">{language === "ar" ? "شيكل (ILS)" : "Israeli Shekel (ILS)"}</option>
+                </select>
               </div>
             </div>
           </section>

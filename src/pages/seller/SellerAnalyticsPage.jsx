@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { useApp } from "../../state/AppContext";
 import { translations } from "../../i18n";
 
-function formatCurrency(value) {
+function formatCurrency(value, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 }
@@ -18,6 +18,7 @@ export default function SellerAnalyticsPage() {
   const activeStoreId = sellerWorkspace[currentUser?.id]?.activeStoreId;
   const sellerStore =
     sellerStores.find((store) => store.id === activeStoreId) || sellerStores[0] || null;
+  const storeCurrency = sellerStore?.currency || "USD";
   const sellerProducts = products.filter((product) => product.storeId === sellerStore?.id);
   const sellerOrders = orders.filter((order) => order.storeId === sellerStore?.id);
 
@@ -40,7 +41,7 @@ export default function SellerAnalyticsPage() {
   const analyticsStats = [
     {
       label: t.monthlySales,
-      value: formatCurrency(sellerStore?.monthlyRevenue || 0),
+      value: formatCurrency(sellerStore?.monthlyRevenue || 0, storeCurrency),
       tone: "teal",
       badge: "MTH",
       helper: isArabic ? "ملخص أداء الشهر الحالي" : "Current month performance",
@@ -54,14 +55,14 @@ export default function SellerAnalyticsPage() {
     },
     {
       label: t.averageOrderValue,
-      value: formatCurrency(averageOrderValue),
+      value: formatCurrency(averageOrderValue, storeCurrency),
       tone: "green",
       badge: "AVG",
       helper: isArabic ? "متوسط قيمة الطلب" : "Average order amount",
     },
     {
       label: t.estimatedProfit,
-      value: formatCurrency(profit),
+      value: formatCurrency(profit, storeCurrency),
       tone: "amber",
       badge: "PFT",
       helper: isArabic ? "محسوب من فرق سعر البيع والتكلفة" : "Calculated from selling price minus cost price",
@@ -129,7 +130,7 @@ export default function SellerAnalyticsPage() {
                     {product.category} | {product.sales} sold
                   </small>
                 </div>
-                <strong>{formatCurrency(product.price)}</strong>
+                <strong>{formatCurrency(product.price, storeCurrency)}</strong>
               </div>
             ))}
           </div>
@@ -143,11 +144,11 @@ export default function SellerAnalyticsPage() {
           <div className="seller-analytics-stack">
             <div className="seller-metric-pill">
               <span>{t.liveRevenue}</span>
-              <strong>{formatCurrency(revenue)}</strong>
+              <strong>{formatCurrency(revenue, storeCurrency)}</strong>
             </div>
             <div className="seller-metric-pill">
               <span>{t.estimatedProfit}</span>
-              <strong>{formatCurrency(profit)}</strong>
+              <strong>{formatCurrency(profit, storeCurrency)}</strong>
             </div>
             <div className="seller-metric-pill">
               <span>{t.productsInCatalog}</span>

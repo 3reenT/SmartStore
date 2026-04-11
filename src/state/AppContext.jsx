@@ -83,6 +83,7 @@ function createStoreDefaults(store = {}) {
       instagram: "",
       ...(store.socialLinks || {}),
     },
+    currency: store.currency || "USD",
   };
 }
 
@@ -244,8 +245,12 @@ function normalizeOrder(order) {
     storeId: order.storeId || "",
     storeName: order.storeName || "",
     customerName: order.customerName || "",
+    customerPhone: order.customerPhone || "",
+    customerAddress: order.customerAddress || "",
     itemsCount: Number(order.itemsCount || 1),
+    items: Array.isArray(order.items) ? order.items : [],
     total: Number(order.total || 0),
+    paymentMethod: order.paymentMethod || "cash",
     status: order.status || "pending",
     paymentStatus: order.paymentStatus || "pending",
     deliveryStatus: order.deliveryStatus || "awaiting pickup",
@@ -438,6 +443,14 @@ const seedData = {
       email: "omar@smartstore.ps",
       password: "customer123",
       role: "customer",
+      status: "active",
+    },
+    {
+      id: "delivery-1",
+      name: "Delivery Agent",
+      email: "delivery@smartstore.ps",
+      password: "delivery123",
+      role: "delivery",
       status: "active",
     },
   ],
@@ -773,7 +786,13 @@ const seedData = {
       storeId: "store-1",
       storeName: "TechStore",
       customerName: "Omar Nassar",
+      customerPhone: "+970599111222",
+      customerAddress: "Ramallah, Al-Tireh, Street 10",
       itemsCount: 2,
+      items: [
+        { productId: "product-1", name: "Lenovo IdeaPad 5", quantity: 1, price: 799, category: "Laptops" },
+        { productId: "product-2", name: "Wireless Mouse MX", quantity: 1, price: 35, category: "Accessories" },
+      ],
       total: 320,
       status: "processing",
       paymentStatus: "paid",
@@ -785,7 +804,12 @@ const seedData = {
       storeId: "store-1",
       storeName: "TechStore",
       customerName: "Maya Khalil",
+      customerPhone: "+970598333444",
+      customerAddress: "Ramallah, Al-Masyoun, Block 3",
       itemsCount: 1,
+      items: [
+        { productId: "product-3", name: "USB-C Dock 8-in-1", quantity: 1, price: 69, category: "Accessories" },
+      ],
       total: 149,
       status: "delivered",
       paymentStatus: "paid",
@@ -797,7 +821,13 @@ const seedData = {
       storeId: "store-1",
       storeName: "TechStore",
       customerName: "Raneem Saleh",
+      customerPhone: "+970595222333",
+      customerAddress: "Ramallah, Al-Irsal, Building 7",
       itemsCount: 3,
+      items: [
+        { productId: "product-1", name: "Lenovo IdeaPad 5", quantity: 1, price: 799, category: "Laptops" },
+        { productId: "product-2", name: "Wireless Mouse MX", quantity: 2, price: 35, category: "Accessories" },
+      ],
       total: 209,
       status: "pending",
       paymentStatus: "pending",
@@ -809,7 +839,13 @@ const seedData = {
       storeId: "store-5",
       storeName: "Home Store",
       customerName: "Alaa Jaber",
+      customerPhone: "+970597555666",
+      customerAddress: "Nablus, Rafidia, Street 12",
       itemsCount: 2,
+      items: [
+        { productId: "product-4", name: "Oak Wall Shelf", quantity: 1, price: 59, category: "Furniture" },
+        { productId: "product-5", name: "Ceramic Plant Pot", quantity: 1, price: 24, category: "Decor" },
+      ],
       total: 88,
       status: "processing",
       paymentStatus: "paid",
@@ -821,7 +857,12 @@ const seedData = {
       storeId: "store-5",
       storeName: "Home Store",
       customerName: "Nadine Salem",
+      customerPhone: "+970596444555",
+      customerAddress: "Nablus, City Center, Building 5",
       itemsCount: 1,
+      items: [
+        { productId: "product-5", name: "Ceramic Plant Pot", quantity: 1, price: 24, category: "Decor" },
+      ],
       total: 46,
       status: "delivered",
       paymentStatus: "paid",
@@ -843,6 +884,7 @@ const seedData = {
   customerState: {
     "customer-1": {},
   },
+  productComments: {},
   storeCustomerSessions: {},
   settings: {
     platformName: "SmartStore",
@@ -861,9 +903,30 @@ function loadState() {
 
     const parsed = JSON.parse(raw);
 
+    const parsedOrders = (parsed.orders || [])
+      .filter((order) => order && typeof order === "object")
+      .map((order) => {
+        const seedOrder = seedData.orders.find((item) => item.id === order.id);
+        if (
+          seedOrder &&
+          Array.isArray(seedOrder.items) &&
+          seedOrder.items.length &&
+          (!Array.isArray(order.items) || !order.items.length)
+        ) {
+          return { ...order, items: seedOrder.items };
+        }
+
+        return order;
+      });
+
     return {
       ...seedData,
       ...parsed,
+      users: mergeById(
+        seedData.users,
+        (parsed.users || []).filter((user) => user && typeof user === "object"),
+        (user) => user,
+      ),
       stores: mergeWithForcedDemoItems(
         seedData.stores,
         (parsed.stores || []).filter((store) => store && typeof store === "object"),
@@ -876,11 +939,7 @@ function loadState() {
         normalizeProduct,
         FORCED_DEMO_PRODUCT_IDS,
       ),
-      orders: mergeById(
-        seedData.orders,
-        (parsed.orders || []).filter((order) => order && typeof order === "object"),
-        normalizeOrder,
-      ),
+      orders: mergeById(seedData.orders, parsedOrders, normalizeOrder),
       storePreferences: {
         ...seedData.storePreferences,
         ...(parsed.storePreferences || {}),
@@ -895,6 +954,10 @@ function loadState() {
           ...(parsed.customerState || {}),
         }).map(([key, value]) => [key, normalizeCustomerState(value)]),
       ),
+      productComments: {
+        ...seedData.productComments,
+        ...(parsed.productComments || {}),
+      },
       storeCustomerSessions: {
         ...seedData.storeCustomerSessions,
         ...(parsed.storeCustomerSessions || {}),
@@ -949,6 +1012,11 @@ export function AppProvider({ children }) {
 
     return normalizeCustomerWorkspace(state.customerState[customer.id]?.[storeId]);
   };
+
+  const getProductComments = (productId) =>
+    Array.isArray(state.productComments?.[productId])
+      ? state.productComments[productId]
+      : [];
 
   const login = (email, password, options = {}) => {
     const user = state.users.find(
@@ -1111,6 +1179,46 @@ export function AppProvider({ children }) {
     return { success: true };
   };
 
+  const addProductComment = (storeId, productId, text) => {
+    const customer = getStoreCustomer(storeId);
+
+    if (!customer) {
+      return { success: false, message: "Login required." };
+    }
+
+    const trimmed = String(text || "").trim();
+
+    if (!trimmed) {
+      return { success: false, message: "Comment cannot be empty." };
+    }
+
+    setState((current) => {
+      const existing = Array.isArray(current.productComments?.[productId])
+        ? current.productComments[productId]
+        : [];
+
+      return {
+        ...current,
+        productComments: {
+          ...current.productComments,
+          [productId]: [
+            {
+              id: `comment-${Date.now()}`,
+              userId: customer.id,
+              userName: customer.name,
+              storeId,
+              text: trimmed,
+              createdAt: new Date().toISOString(),
+            },
+            ...existing,
+          ],
+        },
+      };
+    });
+
+    return { success: true };
+  };
+
   const updateCartQuantity = (storeId, productId, quantity, selection = {}) => {
     const customer = getStoreCustomer(storeId);
 
@@ -1182,7 +1290,7 @@ export function AppProvider({ children }) {
     });
   };
 
-  const checkoutProducts = (storeId, items) => {
+  const checkoutProducts = (storeId, items, paymentMethod = "cash", options = {}) => {
     const customer = getStoreCustomer(storeId);
 
     if (!customer || !items.length) {
@@ -1219,10 +1327,18 @@ export function AppProvider({ children }) {
           storeName: store?.name || "",
           itemsCount: 0,
           total: 0,
+          items: [],
         };
 
         group.itemsCount += appliedQuantity;
         group.total += getEffectiveProductPrice(product) * appliedQuantity;
+        group.items.push({
+          productId: product.id,
+          name: product.name,
+          quantity: appliedQuantity,
+          price: getEffectiveProductPrice(product),
+          category: product.category || "",
+        });
         groupedByStore.set(product.storeId, group);
 
         if (product.hasSizes && product.hasColors) {
@@ -1267,16 +1383,21 @@ export function AppProvider({ children }) {
       });
 
       groupedByStore.forEach((group) => {
+        const normalizedPaymentMethod =
+          paymentMethod === "card" || paymentMethod === "visa" ? "card" : "cash";
         nextOrders.unshift(
           normalizeOrder({
             id: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
             storeId: group.storeId,
             storeName: group.storeName,
             customerName: customer.name,
+            customerPhone: customer.phone || "",
+            customerAddress: customer.address || "",
             itemsCount: group.itemsCount,
             total: group.total,
             status: "processing",
-            paymentStatus: "paid",
+            paymentMethod: normalizedPaymentMethod,
+            paymentStatus: normalizedPaymentMethod === "card" ? "paid" : "pending",
             deliveryStatus: "ready",
             createdAt: "2026-04-05",
           }),
@@ -1302,12 +1423,14 @@ export function AppProvider({ children }) {
             ...customerScopes,
             [storeId]: {
               ...customerWorkspace,
-              cart: customerWorkspace.cart.filter(
-                (item) =>
-                  !purchasedIds.has(
-                    `${item.productId}::${item.size || ""}::${item.color || ""}::${item.dimension || ""}`,
+              cart: options?.preserveCart
+                ? customerWorkspace.cart
+                : customerWorkspace.cart.filter(
+                    (item) =>
+                      !purchasedIds.has(
+                        `${item.productId}::${item.size || ""}::${item.color || ""}::${item.dimension || ""}`,
+                      ),
                   ),
-              ),
             },
           },
         },
@@ -1318,15 +1441,20 @@ export function AppProvider({ children }) {
   };
 
   const buyNow = (storeId, productId, quantity = 1, selection = {}) =>
-    checkoutProducts(storeId, [
-      {
-        productId,
-        quantity: Number(quantity || 1),
-        size: selection.size || "",
-        color: selection.color || "",
-        dimension: selection.dimension || "",
-      },
-    ]);
+    checkoutProducts(
+      storeId,
+      [
+        {
+          productId,
+          quantity: Number(quantity || 1),
+          size: selection.size || "",
+          color: selection.color || "",
+          dimension: selection.dimension || "",
+        },
+      ],
+      "cash",
+      { preserveCart: false },
+    );
 
   const addUser = (payload) => {
     setState((current) => ({
@@ -1662,6 +1790,24 @@ export function AppProvider({ children }) {
     }));
   };
 
+  const updateDeliveryStatus = (orderId, deliveryStatus) => {
+    setState((current) => ({
+      ...current,
+      orders: current.orders.map((order) =>
+        order.id === orderId
+          ? {
+              ...order,
+              deliveryStatus,
+              status:
+                deliveryStatus === "delivered"
+                  ? "delivered"
+                  : order.status,
+            }
+          : order,
+      ),
+    }));
+  };
+
   const saveStorePreferences = (storeId, payload) => {
     setState((current) => ({
       ...current,
@@ -1731,12 +1877,14 @@ export function AppProvider({ children }) {
       storePreferences: state.storePreferences,
       sellerWorkspace: state.sellerWorkspace,
       customerState: state.customerState,
+      productComments: state.productComments,
       storeCustomerSessions: state.storeCustomerSessions,
       settings: state.settings,
       language: state.language,
       currentUser,
       getStoreCustomer,
       getStoreCustomerWorkspace,
+      getProductComments,
       login,
       logout,
       registerCustomer,
@@ -1754,6 +1902,7 @@ export function AppProvider({ children }) {
       removeFromCart,
       checkoutProducts,
       buyNow,
+      addProductComment,
       getEffectiveProductPrice,
       getEffectiveProductOriginalPrice,
       getEffectiveProductDiscountPercent,
@@ -1763,6 +1912,7 @@ export function AppProvider({ children }) {
       deleteProduct,
       generateProductDescription,
       updateOrderStatus,
+      updateDeliveryStatus,
       saveStorePreferences,
       restockProduct,
       saveSettings,

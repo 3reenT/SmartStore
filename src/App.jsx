@@ -21,6 +21,9 @@ import SellerProductsPage from "./pages/seller/SellerProductsPage";
 import SellerOrdersPage from "./pages/seller/SellerOrdersPage";
 import SellerInventoryPage from "./pages/seller/SellerInventoryPage";
 import SellerAnalyticsPage from "./pages/seller/SellerAnalyticsPage";
+import DeliveryLayout from "./pages/delivery/DeliveryLayout";
+import DeliveryOrdersPage from "./pages/delivery/DeliveryOrdersPage";
+import DeliveryOrderDetailsPage from "./pages/delivery/DeliveryOrderDetailsPage";
 
 export default function App() {
   return (
@@ -61,6 +64,17 @@ export default function App() {
           <Route path="orders" element={<SellerOrdersPage />} />
           <Route path="inventory" element={<SellerInventoryPage />} />
           <Route path="analytics" element={<SellerAnalyticsPage />} />
+        </Route>
+        <Route
+          path="/delivery"
+          element={
+            <ProtectedRoute allowedRoles={["delivery"]}>
+              <DeliveryLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<DeliveryOrdersPage />} />
+          <Route path="orders/:orderId" element={<DeliveryOrderDetailsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
